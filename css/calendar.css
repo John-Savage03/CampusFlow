@@ -1,0 +1,415 @@
+/* ================================================= */
+/* MINI CALENDAR */
+/* ================================================= */
+
+.mini-calendar-panel {
+    cursor: pointer;
+
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s;
+}
+
+
+.mini-calendar-panel:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 6px 15px
+        rgba(0, 0, 0, 0.08);
+}
+
+
+.mini-calendar-subtitle {
+    margin-top: 4px;
+
+    color: #6b7280;
+
+    font-size: 13px;
+}
+
+
+.mini-calendar-weekdays {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    margin-bottom: 5px;
+}
+
+
+.mini-calendar-weekdays div {
+    padding: 5px;
+
+    color: #6b7280;
+
+    text-align: center;
+
+    font-size: 12px;
+
+    font-weight: bold;
+}
+
+
+.mini-calendar {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    gap: 6px;
+}
+
+
+.mini-date {
+    min-height: 80px;
+
+    padding: 6px;
+
+    overflow: hidden;
+
+    border: 1px solid transparent;
+
+    border-radius: 7px;
+
+    font-size: 12px;
+}
+
+
+.mini-date:hover {
+    background: #f9fafb;
+
+    border-color: #e5e7eb;
+}
+
+
+.mini-date.outside-month {
+    background: #fafafa;
+
+    color: #c5c7cc;
+}
+
+
+.mini-date.today {
+    border: 2px solid #2563eb;
+}
+
+
+.mini-date-number {
+    display: block;
+
+    margin-bottom: 4px;
+
+    font-weight: bold;
+}
+
+
+/* ================================================= */
+/* MINI ITEMS */
+/* ================================================= */
+
+.mini-event {
+    display: block;
+
+    width: 100%;
+
+    margin-top: 3px;
+
+    padding: 3px 4px;
+
+    border: none;
+
+    border-radius: 4px;
+
+    background: #dbeafe;
+
+    color: #1d4ed8;
+
+    text-align: left;
+
+    font-size: 9px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    cursor: pointer;
+}
+
+
+.mini-event.assignment {
+    background: #fee2e2;
+
+    color: #b91c1c;
+}
+
+
+.mini-event.exam {
+    background: #fef3c7;
+
+    color: #92400e;
+}
+
+
+.mini-more-events {
+    display: block;
+
+    margin-top: 3px;
+
+    color: #6b7280;
+
+    font-size: 9px;
+}
+
+
+/* ================================================= */
+/* CALENDAR KEY */
+/* ================================================= */
+
+.mini-calendar-key {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 20px;
+
+    margin-top: 18px;
+
+    color: #6b7280;
+
+    font-size: 12px;
+}
+
+
+.calendar-dot {
+    display: inline-block;
+
+    width: 7px;
+    height: 7px;
+
+    margin-right: 5px;
+
+    border-radius: 50%;
+}
+
+
+.event-dot {
+    background: #2563eb;
+}
+
+
+.assignment-dot {
+    background: #dc2626;
+}
+
+
+.exam-dot {
+    background: #d97706;
+}
+
+
+/* ================================================= */
+/* FULL CALENDAR */
+/* ================================================= */
+
+.calendar-controls {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 15px;
+
+    background: white;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 10px 10px 0 0;
+}
+
+
+.calendar-arrow {
+    padding: 8px 14px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 6px;
+
+    background: white;
+
+    font-size: 18px;
+
+    cursor: pointer;
+}
+
+
+.calendar-arrow:hover {
+    background: #f3f4f6;
+}
+
+
+.calendar-weekdays {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    background: #f3f4f6;
+
+    border-left: 1px solid #ddd;
+}
+
+
+.calendar-weekdays div {
+    padding: 12px 5px;
+
+    border-right: 1px solid #ddd;
+
+    border-bottom: 1px solid #ddd;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    font-weight: bold;
+}
+
+
+.calendar {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    background: white;
+
+    border-left: 1px solid #ddd;
+}
+
+
+.calendar-day {
+    min-height: 145px;
+
+    padding: 9px;
+
+    overflow: hidden;
+
+    border-right: 1px solid #ddd;
+
+    border-bottom: 1px solid #ddd;
+}
+
+
+.calendar-day.outside-month {
+    background: #fafafa;
+
+    color: #b7b7b7;
+}
+
+
+.calendar-day.today {
+    background: #eff6ff;
+}
+
+
+.calendar-date-number {
+    display: inline-flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    width: 28px;
+    height: 28px;
+
+    border-radius: 50%;
+
+    font-weight: bold;
+}
+
+
+.calendar-day.today
+.calendar-date-number {
+    background: #2563eb;
+
+    color: white;
+}
+
+
+/* ================================================= */
+/* FULL CALENDAR ITEMS */
+/* ================================================= */
+
+.calendar-event {
+    display: block;
+
+    width: 100%;
+
+    margin-top: 6px;
+
+    padding: 6px;
+
+    border: none;
+
+    border-radius: 4px;
+
+    background: #dbeafe;
+
+    color: #1d4ed8;
+
+    text-align: left;
+
+    font-size: 11px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    cursor: pointer;
+}
+
+
+.calendar-event:hover {
+    filter: brightness(0.96);
+}
+
+
+.calendar-event.assignment {
+    background: #fee2e2;
+
+    color: #b91c1c;
+}
+
+
+.calendar-event.exam {
+    background: #fef3c7;
+
+    color: #92400e;
+}
+
+
+@media (max-width: 800px) {
+
+    .calendar-day {
+        min-height: 100px;
+
+        padding: 5px;
+    }
+
+
+    .calendar-event {
+        font-size: 9px;
+    }
+
+
+    .mini-date {
+        min-height: 60px;
+    }
+
+}

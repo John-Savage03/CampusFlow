@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>CampusFlow</title>
+
+    <link
+        rel="stylesheet"
+        href="css/main.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/calendar.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/modals.css"
+    >
+</head>
+
+
+<body>
+
+    <!-- ================================================= -->
+    <!-- APPLICATION MESSAGE -->
+    <!-- ================================================= -->
+
+    <div
+        id="appMessage"
+        class="app-message"
+        role="status"
+        aria-live="polite"
+    >
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- SIDEBAR -->
+    <!-- ================================================= -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+
+            <h2>
+                CampusFlow
+            </h2>
+
+            <p>
+                Academic Planner
+            </p>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- ROLE SWITCHER -->
+        <!-- ================================================= -->
+
+        <div class="role-switcher">
+
+            <p class="role-switcher-label">
+                View As
+            </p>
+
+
+            <div class="role-buttons">
+
+                <button
+                    class="role-button active"
+                    data-role="student"
+                    type="button"
+                    aria-pressed="true"
+                >
+                    Student
+                </button>
+
+
+                <button
+                    class="role-button"
+                    data-role="professor"
+                    type="button"
+                    aria-pressed="false"
+                >
+                    Professor
+                </button>
+
+            </div>
+
+
+            <div
+                class="active-role-label"
+                id="activeRoleLabel"
+            >
+                Student View
+            </div>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- NAVIGATION -->
+        <!-- ================================================= -->
+
+        <nav>
+
+            <button
+                class="nav-button active"
+                data-page="dashboard"
+                type="button"
+            >
+                <span id="dashboardNavLabel">
+                    Dashboard
+                </span>
+            </button>
+
+
+            <button
+                class="nav-button"
+                data-page="calendar"
+                type="button"
+            >
+                <span>
+                    Calendar
+                </span>
+            </button>
+
+
+            <button
+                class="nav-button"
+                data-page="assignments"
+                type="button"
+            >
+                <span id="assignmentsNavLabel">
+                    Assignments & Exams
+                </span>
+            </button>
+
+
+            <button
+                class="nav-button"
+                data-page="courses"
+                type="button"
+            >
+                <span id="coursesNavLabel">
+                    Courses
+                </span>
+            </button>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- ================================================= -->
+    <!-- MAIN -->
+    <!-- ================================================= -->
+
+    <main class="main-content">
+
+
+        <!-- ================================================= -->
+        <!-- STUDENT DASHBOARD -->
+        <!-- ================================================= -->
+
+        <section
+            id="studentDashboard"
+            class="page active-page"
+        >
+
+            <div class="page-header">
+
+                <div>
+
+                    <p class="role-page-label">
+                        STUDENT VIEW
+                    </p>
+
+                    <h1>
+                        Dashboard
+                    </h1>
+
+                    <p>
+                        Your semester at a glance.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- SUMMARY -->
+
+            <div class="overview-grid">
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Upcoming Work
+                    </h3>
+
+                    <p
+                        class="big-number"
+                        id="dashboardUpcomingCount"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Assignments and exams
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Current Courses
+                    </h3>
+
+                    <p
+                        class="big-number"
+                        id="dashboardCourseCount"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Active courses
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Completed
+                    </h3>
+
+                    <p
+                        class="big-number"
+                        id="dashboardCompletedCount"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Completed coursework
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Next Deadline
+                    </h3>
+
+                    <p
+                        class="deadline"
+                        id="dashboardNextDeadline"
+                    >
+                        None
+                    </p>
+
+                    <span
+                        id="dashboardNextDeadlineDate"
+                    >
+                        No upcoming work
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- STUDENT CONTENT -->
+
+            <div class="dashboard-grid">
+
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <h2>
+                            Upcoming Assignments & Exams
+                        </h2>
+
+                        <button
+                            class="small-button"
+                            id="viewAssignmentsButton"
+                            type="button"
+                        >
+                            View All
+                        </button>
+
+                    </div>
+
+
+                    <div id="dashboardUpcomingList">
+                    </div>
+
+                </div>
+
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <h2>
+                            Today's Schedule
+                        </h2>
+
+                    </div>
+
+
+                    <div id="dashboardTodaySchedule">
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- WEEKLY OVERVIEW -->
+
+            <div class="panel weekly-overview-panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Weekly Overview
+                        </h2>
+
+                        <p class="panel-subtitle">
+                            Your next seven days.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="weekly-overview"
+                    id="weeklyOverview"
+                >
+                </div>
+
+            </div>
+
+
+            <!-- MINI CALENDAR -->
+
+            <div
+                class="panel mini-calendar-panel"
+                id="miniCalendar"
+            >
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Calendar
+                        </h2>
+
+                        <p
+                            class="mini-calendar-subtitle"
+                            id="miniCalendarMonth"
+                        >
+                        </p>
+
+                    </div>
+
+
+                    <button
+                        class="small-button"
+                        id="openCalendarButton"
+                        type="button"
+                    >
+                        View Calendar
+                    </button>
+
+                </div>
+
+
+                <div class="mini-calendar-weekdays">
+
+                    <div>S</div>
+                    <div>M</div>
+                    <div>T</div>
+                    <div>W</div>
+                    <div>T</div>
+                    <div>F</div>
+                    <div>S</div>
+
+                </div>
+
+
+                <div
+                    class="mini-calendar"
+                    id="miniCalendarGrid"
+                >
+                </div>
+
+
+                <div class="mini-calendar-key">
+
+                    <span>
+
+                        <span
+                            class="calendar-dot event-dot"
+                        ></span>
+
+                        Event
+
+                    </span>
+
+
+                    <span>
+
+                        <span
+                            class="calendar-dot assignment-dot"
+                        ></span>
+
+                        Assignment
+
+                    </span>
+
+
+                    <span>
+
+                        <span
+                            class="calendar-dot exam-dot"
+                        ></span>
+
+                        Exam
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- PROFESSOR DASHBOARD -->
+        <!-- ================================================= -->
+
+        <section
+            id="professorDashboard"
+            class="page"
+        >
+
+            <div class="page-header">
+
+                <div>
+
+                    <p class="role-page-label">
+                        PROFESSOR VIEW
+                    </p>
+
+                    <h1>
+                        Professor Dashboard
+                    </h1>
+
+                    <p>
+                        Overview of your courses,
+                        coursework, and schedule.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- PROFESSOR SUMMARY -->
+
+            <div class="overview-grid">
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Courses Teaching
+                    </h3>
+
+                    <p
+                        class="big-number"
+                        id="professorCourseCount"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Active courses
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Coursework
+                    </h3>
+
+                    <p
+                        class="big-number"
+                        id="professorCourseworkCount"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Assignments and exams
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Upcoming Deadlines
+                    </h3>
+
+                    <p
+                        class="big-number"
+                        id="professorUpcomingCount"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Not yet completed
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Calendar Events
+                    </h3>
+
+                    <p
+                        class="big-number"
+                        id="professorEventCount"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Scheduled events
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- QUICK ACTIONS -->
+
+            <div class="panel professor-actions-panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Quick Actions
+                        </h2>
+
+                        <p class="panel-subtitle">
+                            Jump to a management area.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="quick-actions">
+
+                    <button
+                        class="primary-button"
+                        id="professorManageCoursesButton"
+                        type="button"
+                    >
+                        Manage Courses
+                    </button>
+
+
+                    <button
+                        class="primary-button"
+                        id="professorCourseworkButton"
+                        type="button"
+                    >
+                        Manage Coursework
+                    </button>
+
+
+                    <button
+                        class="secondary-button"
+                        id="professorCalendarButton"
+                        type="button"
+                    >
+                        Open Calendar
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- PROFESSOR CONTENT -->
+
+            <div class="dashboard-grid">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <h2>
+                                Course Overview
+                            </h2>
+
+                            <p class="panel-subtitle">
+                                Courses you are currently managing.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div id="professorCourseOverview">
+                    </div>
+
+                </div>
+
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <h2>
+                                Upcoming Coursework
+                            </h2>
+
+                            <p class="panel-subtitle">
+                                Next assignments and exams.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div id="professorUpcomingWork">
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- PROFESSOR WEEK -->
+
+            <div class="panel weekly-overview-panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Teaching Week
+                        </h2>
+
+                        <p class="panel-subtitle">
+                            Courses, deadlines, and events
+                            for the next seven days.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="weekly-overview"
+                    id="professorWeeklyOverview"
+                >
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- CALENDAR -->
+        <!-- ================================================= -->
+
+        <section
+            id="calendar"
+            class="page"
+        >
+
+            <div class="page-header">
+
+                <div>
+
+                    <h1>
+                        Unified Calendar
+                    </h1>
+
+                    <p
+                        id="calendarPageDescription"
+                    >
+                        View your events, assignments,
+                        and exams in one location.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="primary-button"
+                    id="openEventModalButton"
+                    type="button"
+                >
+                    + Add Event
+                </button>
+
+            </div>
+
+
+            <div class="calendar-controls">
+
+                <button
+                    class="calendar-arrow"
+                    id="previousMonthButton"
+                    type="button"
+                    aria-label="Previous month"
+                >
+                    ←
+                </button>
+
+
+                <h2 id="currentCalendarMonth">
+                </h2>
+
+
+                <button
+                    class="calendar-arrow"
+                    id="nextMonthButton"
+                    type="button"
+                    aria-label="Next month"
+                >
+                    →
+                </button>
+
+            </div>
+
+
+            <div class="calendar-weekdays">
+
+                <div>Sunday</div>
+                <div>Monday</div>
+                <div>Tuesday</div>
+                <div>Wednesday</div>
+                <div>Thursday</div>
+                <div>Friday</div>
+                <div>Saturday</div>
+
+            </div>
+
+
+            <div
+                class="calendar"
+                id="fullCalendarGrid"
+            >
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- ASSIGNMENTS / EXAMS -->
+        <!-- ================================================= -->
+
+        <section
+            id="assignments"
+            class="page"
+        >
+
+            <div class="page-header">
+
+                <div>
+
+                    <h1 id="assignmentsPageTitle">
+                        Assignment & Exam Tracker
+                    </h1>
+
+                    <p id="assignmentsPageDescription">
+                        Track deadlines, exams,
+                        priorities, and progress.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="primary-button"
+                    id="openTaskModalButton"
+                    type="button"
+                >
+                    + Add Assignment / Exam
+                </button>
+
+            </div>
+
+
+            <div class="filters">
+
+                <select
+                    id="taskCourseFilter"
+                    aria-label="Filter by course"
+                >
+
+                    <option value="all">
+                        All Courses
+                    </option>
+
+                </select>
+
+
+                <select
+                    id="taskTypeFilter"
+                    aria-label="Filter by type"
+                >
+
+                    <option value="all">
+                        Assignments & Exams
+                    </option>
+
+                    <option value="assignment">
+                        Assignments
+                    </option>
+
+                    <option value="exam">
+                        Exams
+                    </option>
+
+                </select>
+
+
+                <select
+                    id="taskStatusFilter"
+                    aria-label="Filter by status"
+                >
+
+                    <option value="all">
+                        All Statuses
+                    </option>
+
+                    <option value="Not Started">
+                        Not Started
+                    </option>
+
+                    <option value="In Progress">
+                        In Progress
+                    </option>
+
+                    <option value="Completed">
+                        Completed
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Type
+                            </th>
+
+                            <th>
+                                Title
+                            </th>
+
+                            <th>
+                                Course
+                            </th>
+
+                            <th>
+                                Due Date
+                            </th>
+
+                            <th>
+                                Priority
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="taskTableBody">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- COURSES -->
+        <!-- ================================================= -->
+
+        <section
+            id="courses"
+            class="page"
+        >
+
+            <div class="page-header">
+
+                <div>
+
+                    <h1 id="coursesPageTitle">
+                        My Courses
+                    </h1>
+
+                    <p id="coursesPageDescription">
+                        Manage courses you are taking.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="primary-button"
+                    id="openCourseModalButton"
+                    type="button"
+                >
+                    + Add Course
+                </button>
+
+            </div>
+
+
+            <div
+                class="course-grid"
+                id="courseGrid"
+            >
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ================================================= -->
+    <!-- CREATE EVENT -->
+    <!-- ================================================= -->
+
+    <div
+        class="modal-overlay"
+        id="eventModal"
+        aria-hidden="true"
+    >
+
+        <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="eventModalTitle"
+        >
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h2 id="eventModalTitle">
+                        Create Event
+                    </h2>
+
+                    <p>
+                        Add an event to your calendar.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="close-modal-button"
+                    id="closeEventModalButton"
+                    type="button"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <form id="eventForm">
+
+                <div class="form-group">
+
+                    <label for="eventTopic">
+                        Event Topic
+                    </label>
+
+                    <input
+                        type="text"
+                        id="eventTopic"
+                        maxlength="60"
+                        placeholder="Study Session"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="eventDate">
+                        Date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="eventDate"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="eventDescription">
+                        Description
+                    </label>
+
+                    <textarea
+                        id="eventDescription"
+                        rows="5"
+                        maxlength="500"
+                        placeholder="Enter event details..."
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="modal-actions">
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        id="cancelEventButton"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="primary-button"
+                    >
+                        Create Event
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- ASSIGNMENT / EXAM MODAL -->
+    <!-- ================================================= -->
+
+    <div
+        class="modal-overlay"
+        id="taskModal"
+        aria-hidden="true"
+    >
+
+        <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="taskModalTitle"
+        >
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h2 id="taskModalTitle">
+                        Add Assignment or Exam
+                    </h2>
+
+                    <p id="taskModalDescription">
+                        Add coursework to your tracker.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="close-modal-button"
+                    id="closeTaskModalButton"
+                    type="button"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <form id="taskForm">
+
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label for="taskType">
+                            Type
+                        </label>
+
+                        <select
+                            id="taskType"
+                            required
+                        >
+
+                            <option value="assignment">
+                                Assignment
+                            </option>
+
+                            <option value="exam">
+                                Exam
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="taskCourse">
+                            Course
+                        </label>
+
+                        <select
+                            id="taskCourse"
+                            required
+                        >
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="taskTitle">
+                        Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="taskTitle"
+                        maxlength="80"
+                        placeholder="Database Homework 4"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="taskDueDate">
+                        Due Date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="taskDueDate"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label for="taskPriority">
+                            Priority
+                        </label>
+
+                        <select id="taskPriority">
+
+                            <option value="Low">
+                                Low
+                            </option>
+
+                            <option
+                                value="Medium"
+                                selected
+                            >
+                                Medium
+                            </option>
+
+                            <option value="High">
+                                High
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="taskStatus">
+                            Status
+                        </label>
+
+                        <select id="taskStatus">
+
+                            <option value="Not Started">
+                                Not Started
+                            </option>
+
+                            <option value="In Progress">
+                                In Progress
+                            </option>
+
+                            <option value="Completed">
+                                Completed
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="taskDescription">
+                        Description
+                    </label>
+
+                    <textarea
+                        id="taskDescription"
+                        rows="4"
+                        maxlength="500"
+                        placeholder="Assignment or exam details..."
+                    ></textarea>
+
+                </div>
+
+
+                <div class="modal-actions">
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        id="cancelTaskButton"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="primary-button"
+                        id="taskSubmitButton"
+                    >
+                        Add
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- COURSE MODAL -->
+    <!-- ================================================= -->
+
+    <div
+        class="modal-overlay"
+        id="courseModal"
+        aria-hidden="true"
+    >
+
+        <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="courseModalTitle"
+        >
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h2 id="courseModalTitle">
+                        Add Course
+                    </h2>
+
+                    <p id="courseModalDescription">
+                        Add a course to your planner.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="close-modal-button"
+                    id="closeCourseModalButton"
+                    type="button"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <form id="courseForm">
+
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label for="courseCode">
+                            Course Code
+                        </label>
+
+                        <input
+                            type="text"
+                            id="courseCode"
+                            maxlength="20"
+                            placeholder="CSCI 3410"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="courseName">
+                            Course Name
+                        </label>
+
+                        <input
+                            type="text"
+                            id="courseName"
+                            maxlength="80"
+                            placeholder="Database Systems"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="courseInstructor">
+                        Instructor
+                    </label>
+
+                    <input
+                        type="text"
+                        id="courseInstructor"
+                        maxlength="80"
+                        placeholder="Professor Name"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label for="courseDays">
+                            Meeting Schedule
+                        </label>
+
+                        <select
+                            id="courseDays"
+                            required
+                        >
+
+                            <option value="M/W/F">
+                                Monday / Wednesday / Friday
+                            </option>
+
+                            <option value="T/Th">
+                                Tuesday / Thursday
+                            </option>
+
+                            <option value="M/W">
+                                Monday / Wednesday
+                            </option>
+
+                            <option value="T/Th/F">
+                                Tuesday / Thursday / Friday
+                            </option>
+
+                            <option value="Online">
+                                Online
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="courseTime">
+                            Meeting Time
+                        </label>
+
+                        <input
+                            type="time"
+                            id="courseTime"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <div class="modal-actions">
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        id="cancelCourseButton"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="primary-button"
+                        id="courseSubmitButton"
+                    >
+                        Add Course
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- DETAILS -->
+    <!-- ================================================= -->
+
+    <div
+        class="modal-overlay"
+        id="detailsModal"
+        aria-hidden="true"
+    >
+
+        <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detailsTitle"
+        >
+
+            <div class="modal-header">
+
+                <div>
+
+                    <p
+                        class="details-label"
+                        id="detailsType"
+                    >
+                    </p>
+
+                    <h2 id="detailsTitle">
+                    </h2>
+
+                </div>
+
+
+                <button
+                    class="close-modal-button"
+                    id="closeDetailsModalButton"
+                    type="button"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="event-details-content">
+
+                <div class="event-detail-section">
+
+                    <h3 id="detailsDateLabel">
+                        Date
+                    </h3>
+
+                    <p id="detailsDate">
+                    </p>
+
+                </div>
+
+
+                <div class="event-detail-section">
+
+                    <h3 id="detailsCourseLabel">
+                        Course
+                    </h3>
+
+                    <p id="detailsCourse">
+                    </p>
+
+                </div>
+
+
+                <div class="event-detail-section">
+
+                    <h3>
+                        Description
+                    </h3>
+
+                    <p id="detailsDescription">
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="modal-actions">
+
+                <button
+                    class="primary-button"
+                    id="closeDetailsButton"
+                    type="button"
+                >
+                    Close
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script
+        type="module"
+        src="js/app.js"
+    ></script>
+
+</body>
+
+</html>
