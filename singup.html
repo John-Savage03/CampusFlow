@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>CampusFlow Sign Up</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            min-height: 100vh;
+
+            margin: 0;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 24px;
+
+            background: #1f2937;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            color: #1f2937;
+
+        }
+
+
+        .auth-card {
+
+            width: min(
+                420px,
+                100%
+            );
+
+            padding: 32px;
+
+            border-radius: 14px;
+
+            background: white;
+
+            box-shadow:
+                0 20px 45px
+                rgba(
+                    0,
+                    0,
+                    0,
+                    .22
+                );
+
+        }
+
+
+        .brand {
+
+            margin-bottom: 24px;
+
+            text-align: center;
+
+        }
+
+
+        .brand h1 {
+
+            margin: 0;
+
+            color: #2563eb;
+
+            font-size: 30px;
+
+        }
+
+
+        .brand p {
+
+            margin:
+                7px
+                0
+                0;
+
+            color: #6b7280;
+
+        }
+
+
+        label {
+
+            display: block;
+
+            margin-bottom: 6px;
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+        }
+
+
+        input,
+        select {
+
+            width: 100%;
+
+            margin-bottom: 16px;
+
+            padding:
+                11px
+                12px;
+
+            border:
+                1px
+                solid
+                #d1d5db;
+
+            border-radius: 8px;
+
+            background: white;
+
+            font: inherit;
+
+        }
+
+
+        input:focus,
+        select:focus {
+
+            outline:
+                2px
+                solid
+                #bfdbfe;
+
+            border-color:
+                #2563eb;
+
+        }
+
+
+        .hint {
+
+            margin:
+                -9px
+                0
+                16px;
+
+            color: #6b7280;
+
+            font-size: 12px;
+
+        }
+
+
+        button {
+
+            width: 100%;
+
+            padding:
+                12px
+                16px;
+
+            border: 0;
+
+            border-radius: 8px;
+
+            background:
+                #2563eb;
+
+            color: white;
+
+            font: inherit;
+
+            font-weight: 700;
+
+            cursor: pointer;
+
+        }
+
+
+        button:hover {
+
+            background:
+                #1d4ed8;
+
+        }
+
+
+        button:disabled {
+
+            opacity: .65;
+
+            cursor: wait;
+
+        }
+
+
+        #message {
+
+            min-height: 20px;
+
+            margin:
+                14px
+                0
+                0;
+
+            color: #b91c1c;
+
+            font-size: 13px;
+
+            text-align: center;
+
+        }
+
+
+        #message.success {
+
+            color: #166534;
+
+        }
+
+
+        .auth-link {
+
+            margin:
+                20px
+                0
+                0;
+
+            color: #6b7280;
+
+            font-size: 14px;
+
+            text-align: center;
+
+        }
+
+
+        a {
+
+            color: #2563eb;
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <main class="auth-card">
+
+
+        <div class="brand">
+
+            <h1>
+                CampusFlow
+            </h1>
+
+            <p>
+                Create your account.
+            </p>
+
+        </div>
+
+
+        <form id="signUpForm">
+
+
+            <label for="CreateUsername">
+                Create a username
+            </label>
+
+
+            <input
+                type="text"
+                id="CreateUsername"
+                minlength="3"
+                maxlength="40"
+                autocomplete="username"
+                required
+            >
+
+
+            <label for="CreatePassword">
+                Create a password
+            </label>
+
+
+            <input
+                type="password"
+                id="CreatePassword"
+                minlength="8"
+                autocomplete="new-password"
+                required
+            >
+
+
+            <label for="RetypePassword">
+                Retype your password
+            </label>
+
+
+            <input
+                type="password"
+                id="RetypePassword"
+                minlength="8"
+                autocomplete="new-password"
+                required
+            >
+
+
+            <p class="hint">
+                Password must be at least
+                8 characters long.
+            </p>
+
+
+            <label for="Role">
+                I am a
+            </label>
+
+
+            <select
+                id="Role"
+                required
+            >
+
+                <option value="student">
+                    Student
+                </option>
+
+                <option value="professor">
+                    Professor
+                </option>
+
+            </select>
+
+
+            <button
+                type="submit"
+                id="SignUpButton"
+            >
+                Create Account
+            </button>
+
+
+        </form>
+
+
+        <p
+            id="message"
+            role="status"
+            aria-live="polite"
+        ></p>
+
+
+        <p class="auth-link">
+
+            Already have an account?
+
+            <a href="login.html">
+                Log in
+            </a>
+
+        </p>
+
+
+    </main>
+
+
+    <script src="js/auth.js"></script>
+
+
+</body>
+
+</html>
