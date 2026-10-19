@@ -1,46 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampusFlow</title>
-
-    <link
-        rel="stylesheet"
-        href="css/main.css"
-    >
-
-    <link
-        rel="stylesheet"
-        href="css/calendar.css"
-    >
-
-    <link
-        rel="stylesheet"
-        href="css/modals.css"
-    >
+    <link rel="stylesheet" href="css/main.css">
 </head>
 
-
 <body>
-
-    <!-- ================================================= -->
-    <!-- APPLICATION MESSAGE -->
-    <!-- ================================================= -->
 
     <div
         id="appMessage"
         class="app-message"
         role="status"
         aria-live="polite"
-    >
-    </div>
+    ></div>
 
 
     <!-- ================================================= -->
@@ -50,45 +24,32 @@
     <aside class="sidebar">
 
         <div class="logo">
-
-            <h2>
-                CampusFlow
-            </h2>
-
-            <p>
-                Academic Planner
-            </p>
-
+            <h2>CampusFlow</h2>
+            <p>Academic Planner</p>
         </div>
 
 
-        <!-- ================================================= -->
         <!-- ROLE SWITCHER -->
-        <!-- ================================================= -->
 
         <div class="role-switcher">
 
-            <p class="role-switcher-label">
-                View As
-            </p>
-
+            <p>View As</p>
 
             <div class="role-buttons">
 
                 <button
+                    type="button"
                     class="role-button active"
                     data-role="student"
-                    type="button"
                     aria-pressed="true"
                 >
                     Student
                 </button>
 
-
                 <button
+                    type="button"
                     class="role-button"
                     data-role="professor"
-                    type="button"
                     aria-pressed="false"
                 >
                     Professor
@@ -96,60 +57,57 @@
 
             </div>
 
-
-            <div
-                class="active-role-label"
-                id="activeRoleLabel"
-            >
+            <span id="activeRoleLabel">
                 Student View
-            </div>
+            </span>
 
         </div>
 
 
-        <!-- ================================================= -->
         <!-- NAVIGATION -->
-        <!-- ================================================= -->
 
         <nav>
 
             <button
+                type="button"
                 class="nav-button active"
                 data-page="dashboard"
-                type="button"
             >
-                <span id="dashboardNavLabel">
-                    Dashboard
-                </span>
+                Dashboard
             </button>
 
-
             <button
+                type="button"
                 class="nav-button"
                 data-page="calendar"
-                type="button"
             >
-                <span>
-                    Calendar
-                </span>
+                Calendar
             </button>
 
-
             <button
+                type="button"
                 class="nav-button"
                 data-page="assignments"
-                type="button"
             >
                 <span id="assignmentsNavLabel">
                     Assignments & Exams
                 </span>
             </button>
 
+            <button
+                type="button"
+                class="nav-button"
+                data-page="grades"
+            >
+                <span id="gradesNavLabel">
+                    Grades
+                </span>
+            </button>
 
             <button
+                type="button"
                 class="nav-button"
                 data-page="courses"
-                type="button"
             >
                 <span id="coursesNavLabel">
                     Courses
@@ -162,7 +120,7 @@
 
 
     <!-- ================================================= -->
-    <!-- MAIN -->
+    <!-- MAIN CONTENT -->
     <!-- ================================================= -->
 
     <main class="main-content">
@@ -181,7 +139,7 @@
 
                 <div>
 
-                    <p class="role-page-label">
+                    <p class="eyebrow">
                         STUDENT VIEW
                     </p>
 
@@ -198,10 +156,9 @@
             </div>
 
 
-            <!-- SUMMARY -->
+            <!-- STUDENT SUMMARY -->
 
             <div class="overview-grid">
-
 
                 <div class="overview-card">
 
@@ -210,8 +167,8 @@
                     </h3>
 
                     <p
+                        id="studentUpcomingCount"
                         class="big-number"
-                        id="dashboardUpcomingCount"
                     >
                         0
                     </p>
@@ -226,12 +183,12 @@
                 <div class="overview-card">
 
                     <h3>
-                        Current Courses
+                        Courses
                     </h3>
 
                     <p
+                        id="studentCourseCount"
                         class="big-number"
-                        id="dashboardCourseCount"
                     >
                         0
                     </p>
@@ -250,8 +207,8 @@
                     </h3>
 
                     <p
+                        id="studentCompletedCount"
                         class="big-number"
-                        id="dashboardCompletedCount"
                     >
                         0
                     </p>
@@ -270,15 +227,13 @@
                     </h3>
 
                     <p
+                        id="studentNextDeadline"
                         class="deadline"
-                        id="dashboardNextDeadline"
                     >
                         None
                     </p>
 
-                    <span
-                        id="dashboardNextDeadlineDate"
-                    >
+                    <span id="studentNextDeadlineDate">
                         No upcoming work
                     </span>
 
@@ -287,10 +242,9 @@
             </div>
 
 
-            <!-- STUDENT CONTENT -->
+            <!-- STUDENT DASHBOARD PANELS -->
 
             <div class="dashboard-grid">
-
 
                 <div class="panel">
 
@@ -301,18 +255,16 @@
                         </h2>
 
                         <button
-                            class="small-button"
-                            id="viewAssignmentsButton"
                             type="button"
+                            class="text-button"
+                            id="studentViewAssignmentsButton"
                         >
                             View All
                         </button>
 
                     </div>
 
-
-                    <div id="dashboardUpcomingList">
-                    </div>
+                    <div id="studentUpcomingList"></div>
 
                 </div>
 
@@ -320,16 +272,12 @@
                 <div class="panel">
 
                     <div class="panel-header">
-
                         <h2>
                             Today's Schedule
                         </h2>
-
                     </div>
 
-
-                    <div id="dashboardTodaySchedule">
-                    </div>
+                    <div id="studentTodaySchedule"></div>
 
                 </div>
 
@@ -338,7 +286,7 @@
 
             <!-- WEEKLY OVERVIEW -->
 
-            <div class="panel weekly-overview-panel">
+            <div class="panel">
 
                 <div class="panel-header">
 
@@ -356,22 +304,17 @@
 
                 </div>
 
-
                 <div
+                    id="studentWeeklyOverview"
                     class="weekly-overview"
-                    id="weeklyOverview"
-                >
-                </div>
+                ></div>
 
             </div>
 
 
             <!-- MINI CALENDAR -->
 
-            <div
-                class="panel mini-calendar-panel"
-                id="miniCalendar"
-            >
+            <div class="panel mini-calendar-panel">
 
                 <div class="panel-header">
 
@@ -382,20 +325,18 @@
                         </h2>
 
                         <p
-                            class="mini-calendar-subtitle"
                             id="miniCalendarMonth"
-                        >
-                        </p>
+                            class="panel-subtitle"
+                        ></p>
 
                     </div>
 
-
                     <button
-                        class="small-button"
-                        id="openCalendarButton"
                         type="button"
+                        class="text-button"
+                        id="studentOpenCalendarButton"
                     >
-                        View Calendar
+                        Open Calendar
                     </button>
 
                 </div>
@@ -403,59 +344,21 @@
 
                 <div class="mini-calendar-weekdays">
 
-                    <div>S</div>
-                    <div>M</div>
-                    <div>T</div>
-                    <div>W</div>
-                    <div>T</div>
-                    <div>F</div>
-                    <div>S</div>
+                    <span>S</span>
+                    <span>M</span>
+                    <span>T</span>
+                    <span>W</span>
+                    <span>T</span>
+                    <span>F</span>
+                    <span>S</span>
 
                 </div>
 
 
                 <div
-                    class="mini-calendar"
                     id="miniCalendarGrid"
-                >
-                </div>
-
-
-                <div class="mini-calendar-key">
-
-                    <span>
-
-                        <span
-                            class="calendar-dot event-dot"
-                        ></span>
-
-                        Event
-
-                    </span>
-
-
-                    <span>
-
-                        <span
-                            class="calendar-dot assignment-dot"
-                        ></span>
-
-                        Assignment
-
-                    </span>
-
-
-                    <span>
-
-                        <span
-                            class="calendar-dot exam-dot"
-                        ></span>
-
-                        Exam
-
-                    </span>
-
-                </div>
+                    class="mini-calendar"
+                ></div>
 
             </div>
 
@@ -475,7 +378,7 @@
 
                 <div>
 
-                    <p class="role-page-label">
+                    <p class="eyebrow">
                         PROFESSOR VIEW
                     </p>
 
@@ -484,8 +387,8 @@
                     </h1>
 
                     <p>
-                        Overview of your courses,
-                        coursework, and schedule.
+                        Manage courses, coursework,
+                        grades, and your teaching schedule.
                     </p>
 
                 </div>
@@ -493,10 +396,7 @@
             </div>
 
 
-            <!-- PROFESSOR SUMMARY -->
-
             <div class="overview-grid">
-
 
                 <div class="overview-card">
 
@@ -505,8 +405,8 @@
                     </h3>
 
                     <p
-                        class="big-number"
                         id="professorCourseCount"
+                        class="big-number"
                     >
                         0
                     </p>
@@ -525,8 +425,8 @@
                     </h3>
 
                     <p
-                        class="big-number"
                         id="professorCourseworkCount"
+                        class="big-number"
                     >
                         0
                     </p>
@@ -541,18 +441,18 @@
                 <div class="overview-card">
 
                     <h3>
-                        Upcoming Deadlines
+                        Recorded Grades
                     </h3>
 
                     <p
+                        id="professorGradeCount"
                         class="big-number"
-                        id="professorUpcomingCount"
                     >
                         0
                     </p>
 
                     <span>
-                        Not yet completed
+                        Gradebook entries
                     </span>
 
                 </div>
@@ -561,18 +461,18 @@
                 <div class="overview-card">
 
                     <h3>
-                        Calendar Events
+                        Upcoming Deadlines
                     </h3>
 
                     <p
+                        id="professorUpcomingCount"
                         class="big-number"
-                        id="professorEventCount"
                     >
                         0
                     </p>
 
                     <span>
-                        Scheduled events
+                        Future coursework
                     </span>
 
                 </div>
@@ -580,9 +480,9 @@
             </div>
 
 
-            <!-- QUICK ACTIONS -->
+            <!-- PROFESSOR QUICK ACTIONS -->
 
-            <div class="panel professor-actions-panel">
+            <div class="panel quick-actions-panel">
 
                 <div class="panel-header">
 
@@ -604,27 +504,33 @@
                 <div class="quick-actions">
 
                     <button
-                        class="primary-button"
-                        id="professorManageCoursesButton"
                         type="button"
+                        class="primary-button"
+                        id="professorCoursesButton"
                     >
                         Manage Courses
                     </button>
 
-
                     <button
-                        class="primary-button"
-                        id="professorCourseworkButton"
                         type="button"
+                        class="primary-button"
+                        id="professorAssignmentsButton"
                     >
                         Manage Coursework
                     </button>
 
+                    <button
+                        type="button"
+                        class="primary-button"
+                        id="professorGradesButton"
+                    >
+                        Open Gradebook
+                    </button>
 
                     <button
+                        type="button"
                         class="secondary-button"
                         id="professorCalendarButton"
-                        type="button"
                     >
                         Open Calendar
                     </button>
@@ -634,31 +540,17 @@
             </div>
 
 
-            <!-- PROFESSOR CONTENT -->
-
             <div class="dashboard-grid">
 
                 <div class="panel">
 
                     <div class="panel-header">
-
-                        <div>
-
-                            <h2>
-                                Course Overview
-                            </h2>
-
-                            <p class="panel-subtitle">
-                                Courses you are currently managing.
-                            </p>
-
-                        </div>
-
+                        <h2>
+                            Course Overview
+                        </h2>
                     </div>
 
-
-                    <div id="professorCourseOverview">
-                    </div>
+                    <div id="professorCourseOverview"></div>
 
                 </div>
 
@@ -666,33 +558,19 @@
                 <div class="panel">
 
                     <div class="panel-header">
-
-                        <div>
-
-                            <h2>
-                                Upcoming Coursework
-                            </h2>
-
-                            <p class="panel-subtitle">
-                                Next assignments and exams.
-                            </p>
-
-                        </div>
-
+                        <h2>
+                            Upcoming Coursework
+                        </h2>
                     </div>
 
-
-                    <div id="professorUpcomingWork">
-                    </div>
+                    <div id="professorUpcomingList"></div>
 
                 </div>
 
             </div>
 
 
-            <!-- PROFESSOR WEEK -->
-
-            <div class="panel weekly-overview-panel">
+            <div class="panel">
 
                 <div class="panel-header">
 
@@ -703,20 +581,17 @@
                         </h2>
 
                         <p class="panel-subtitle">
-                            Courses, deadlines, and events
-                            for the next seven days.
+                            Your next seven days.
                         </p>
 
                     </div>
 
                 </div>
 
-
                 <div
-                    class="weekly-overview"
                     id="professorWeeklyOverview"
-                >
-                </div>
+                    class="weekly-overview"
+                ></div>
 
             </div>
 
@@ -740,20 +615,17 @@
                         Unified Calendar
                     </h1>
 
-                    <p
-                        id="calendarPageDescription"
-                    >
-                        View your events, assignments,
-                        and exams in one location.
+                    <p id="calendarDescription">
+                        View events, assignments,
+                        and exams in one place.
                     </p>
 
                 </div>
 
-
                 <button
+                    type="button"
                     class="primary-button"
                     id="openEventModalButton"
-                    type="button"
                 >
                     + Add Event
                 </button>
@@ -764,24 +636,19 @@
             <div class="calendar-controls">
 
                 <button
-                    class="calendar-arrow"
-                    id="previousMonthButton"
                     type="button"
-                    aria-label="Previous month"
+                    id="previousMonthButton"
+                    class="secondary-button"
                 >
                     ←
                 </button>
 
-
-                <h2 id="currentCalendarMonth">
-                </h2>
-
+                <h2 id="currentCalendarMonth"></h2>
 
                 <button
-                    class="calendar-arrow"
-                    id="nextMonthButton"
                     type="button"
-                    aria-label="Next month"
+                    id="nextMonthButton"
+                    class="secondary-button"
                 >
                     →
                 </button>
@@ -791,28 +658,26 @@
 
             <div class="calendar-weekdays">
 
-                <div>Sunday</div>
-                <div>Monday</div>
-                <div>Tuesday</div>
-                <div>Wednesday</div>
-                <div>Thursday</div>
-                <div>Friday</div>
-                <div>Saturday</div>
+                <span>Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
 
             </div>
-
 
             <div
-                class="calendar"
                 id="fullCalendarGrid"
-            >
-            </div>
+                class="calendar-grid"
+            ></div>
 
         </section>
 
 
         <!-- ================================================= -->
-        <!-- ASSIGNMENTS / EXAMS -->
+        <!-- ASSIGNMENTS & EXAMS -->
         <!-- ================================================= -->
 
         <section
@@ -829,17 +694,16 @@
                     </h1>
 
                     <p id="assignmentsPageDescription">
-                        Track deadlines, exams,
-                        priorities, and progress.
+                        Track deadlines, priorities,
+                        and progress.
                     </p>
 
                 </div>
 
-
                 <button
+                    type="button"
                     class="primary-button"
                     id="openTaskModalButton"
-                    type="button"
                 >
                     + Add Assignment / Exam
                 </button>
@@ -849,22 +713,13 @@
 
             <div class="filters">
 
-                <select
-                    id="taskCourseFilter"
-                    aria-label="Filter by course"
-                >
-
+                <select id="taskCourseFilter">
                     <option value="all">
                         All Courses
                     </option>
-
                 </select>
 
-
-                <select
-                    id="taskTypeFilter"
-                    aria-label="Filter by type"
-                >
+                <select id="taskTypeFilter">
 
                     <option value="all">
                         Assignments & Exams
@@ -880,11 +735,7 @@
 
                 </select>
 
-
-                <select
-                    id="taskStatusFilter"
-                    aria-label="Filter by status"
-                >
+                <select id="taskStatusFilter">
 
                     <option value="all">
                         All Statuses
@@ -914,40 +765,345 @@
                     <thead>
 
                         <tr>
-
-                            <th>
-                                Type
-                            </th>
-
-                            <th>
-                                Title
-                            </th>
-
-                            <th>
-                                Course
-                            </th>
-
-                            <th>
-                                Due Date
-                            </th>
-
-                            <th>
-                                Priority
-                            </th>
-
-                            <th>
-                                Status
-                            </th>
-
+                            <th>Type</th>
+                            <th>Title</th>
+                            <th>Course</th>
+                            <th>Due Date</th>
+                            <th>Priority</th>
+                            <th>Status</th>
                         </tr>
 
                     </thead>
 
-
-                    <tbody id="taskTableBody">
-                    </tbody>
+                    <tbody id="taskTableBody"></tbody>
 
                 </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- GRADES -->
+        <!-- ================================================= -->
+
+        <section
+            id="grades"
+            class="page"
+        >
+
+            <div class="page-header">
+
+                <div>
+
+                    <h1 id="gradesPageTitle">
+                        Grade Tracker & Calculator
+                    </h1>
+
+                    <p id="gradesPageDescription">
+                        Track course grades and calculate
+                        the score you need.
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="primary-button"
+                    id="openGradeModalButton"
+                >
+                    + Add Grade
+                </button>
+
+            </div>
+
+
+            <div class="overview-grid">
+
+                <div class="overview-card">
+
+                    <h3>
+                        Graded Items
+                    </h3>
+
+                    <p
+                        id="gradeItemCount"
+                        class="big-number"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Recorded scores
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Courses With Grades
+                    </h3>
+
+                    <p
+                        id="gradeCourseCount"
+                        class="big-number"
+                    >
+                        0
+                    </p>
+
+                    <span>
+                        Courses being tracked
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Highest Average
+                    </h3>
+
+                    <p
+                        id="gradeHighestAverage"
+                        class="big-number"
+                    >
+                        --
+                    </p>
+
+                    <span>
+                        Best tracked course
+                    </span>
+
+                </div>
+
+
+                <div class="overview-card">
+
+                    <h3>
+                        Overall Average
+                    </h3>
+
+                    <p
+                        id="gradeOverallAverage"
+                        class="big-number"
+                    >
+                        --
+                    </p>
+
+                    <span>
+                        All recorded points
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="grade-grid">
+
+                <!-- COURSE AVERAGES -->
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <h2>
+                                Course Averages
+                            </h2>
+
+                            <p class="panel-subtitle">
+                                Points-based averages
+                                from recorded grades.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div id="gradeCourseSummary"></div>
+
+                </div>
+
+
+                <!-- GRADE CALCULATOR -->
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <h2>
+                                Grade Calculator
+                            </h2>
+
+                            <p class="panel-subtitle">
+                                Calculate what you need
+                                on a remaining assessment.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="gradeCalculatorCourse">
+                            Course
+                        </label>
+
+                        <select id="gradeCalculatorCourse"></select>
+
+                    </div>
+
+
+                    <div class="calculator-current">
+
+                        <span>
+                            Current Average
+                        </span>
+
+                        <strong id="calculatorCurrentAverage">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div class="form-row">
+
+                        <div class="form-group">
+
+                            <label for="targetGrade">
+                                Target Course Grade (%)
+                            </label>
+
+                            <input
+                                type="number"
+                                id="targetGrade"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                placeholder="90"
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="remainingWeight">
+                                Remaining Assessment Weight (%)
+                            </label>
+
+                            <input
+                                type="number"
+                                id="remainingWeight"
+                                min="1"
+                                max="100"
+                                step="0.1"
+                                placeholder="25"
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        class="primary-button"
+                        id="calculateGradeButton"
+                    >
+                        Calculate Needed Score
+                    </button>
+
+
+                    <div
+                        id="gradeCalculatorResult"
+                        class="calculator-result"
+                    >
+                        Select a course and enter your target.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- GRADE TABLE -->
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Grade Tracker
+                        </h2>
+
+                        <p class="panel-subtitle">
+                            All recorded grades.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="filters">
+
+                    <select id="gradeCourseFilter">
+
+                        <option value="all">
+                            All Courses
+                        </option>
+
+                    </select>
+
+
+                    <select id="gradeCategoryFilter">
+
+                        <option value="all">
+                            All Categories
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="table-container">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+                                <th>Course</th>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Score</th>
+                                <th>Percentage</th>
+                                <th>Letter</th>
+                                <th>Action</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="gradeTableBody"></tbody>
+
+                    </table>
+
+                </div>
 
             </div>
 
@@ -977,23 +1133,20 @@
 
                 </div>
 
-
                 <button
+                    type="button"
                     class="primary-button"
                     id="openCourseModalButton"
-                    type="button"
                 >
                     + Add Course
                 </button>
 
             </div>
 
-
             <div
-                class="course-grid"
                 id="courseGrid"
-            >
-            </div>
+                class="course-grid"
+            ></div>
 
         </section>
 
@@ -1001,27 +1154,22 @@
 
 
     <!-- ================================================= -->
-    <!-- CREATE EVENT -->
+    <!-- EVENT MODAL -->
     <!-- ================================================= -->
 
     <div
-        class="modal-overlay"
         id="eventModal"
+        class="modal-overlay"
         aria-hidden="true"
     >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="eventModalTitle"
-        >
+        <div class="modal">
 
             <div class="modal-header">
 
                 <div>
 
-                    <h2 id="eventModalTitle">
+                    <h2>
                         Create Event
                     </h2>
 
@@ -1031,12 +1179,10 @@
 
                 </div>
 
-
                 <button
-                    class="close-modal-button"
-                    id="closeEventModalButton"
                     type="button"
-                    aria-label="Close"
+                    class="close-button"
+                    data-close-modal="eventModal"
                 >
                     ×
                 </button>
@@ -1056,7 +1202,6 @@
                         type="text"
                         id="eventTopic"
                         maxlength="60"
-                        placeholder="Study Session"
                         required
                     >
 
@@ -1086,9 +1231,8 @@
 
                     <textarea
                         id="eventDescription"
-                        rows="5"
+                        rows="4"
                         maxlength="500"
-                        placeholder="Enter event details..."
                         required
                     ></textarea>
 
@@ -1100,11 +1244,10 @@
                     <button
                         type="button"
                         class="secondary-button"
-                        id="cancelEventButton"
+                        data-close-modal="eventModal"
                     >
                         Cancel
                     </button>
-
 
                     <button
                         type="submit"
@@ -1123,21 +1266,16 @@
 
 
     <!-- ================================================= -->
-    <!-- ASSIGNMENT / EXAM MODAL -->
+    <!-- TASK MODAL -->
     <!-- ================================================= -->
 
     <div
-        class="modal-overlay"
         id="taskModal"
+        class="modal-overlay"
         aria-hidden="true"
     >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="taskModalTitle"
-        >
+        <div class="modal">
 
             <div class="modal-header">
 
@@ -1153,12 +1291,10 @@
 
                 </div>
 
-
                 <button
-                    class="close-modal-button"
-                    id="closeTaskModalButton"
                     type="button"
-                    aria-label="Close"
+                    class="close-button"
+                    data-close-modal="taskModal"
                 >
                     ×
                 </button>
@@ -1176,10 +1312,7 @@
                             Type
                         </label>
 
-                        <select
-                            id="taskType"
-                            required
-                        >
+                        <select id="taskType">
 
                             <option value="assignment">
                                 Assignment
@@ -1203,8 +1336,7 @@
                         <select
                             id="taskCourse"
                             required
-                        >
-                        </select>
+                        ></select>
 
                     </div>
 
@@ -1221,7 +1353,6 @@
                         type="text"
                         id="taskTitle"
                         maxlength="80"
-                        placeholder="Database Homework 4"
                         required
                     >
 
@@ -1310,7 +1441,6 @@
                         id="taskDescription"
                         rows="4"
                         maxlength="500"
-                        placeholder="Assignment or exam details..."
                     ></textarea>
 
                 </div>
@@ -1321,11 +1451,10 @@
                     <button
                         type="button"
                         class="secondary-button"
-                        id="cancelTaskButton"
+                        data-close-modal="taskModal"
                     >
                         Cancel
                     </button>
-
 
                     <button
                         type="submit"
@@ -1349,17 +1478,12 @@
     <!-- ================================================= -->
 
     <div
-        class="modal-overlay"
         id="courseModal"
+        class="modal-overlay"
         aria-hidden="true"
     >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="courseModalTitle"
-        >
+        <div class="modal">
 
             <div class="modal-header">
 
@@ -1370,17 +1494,15 @@
                     </h2>
 
                     <p id="courseModalDescription">
-                        Add a course to your planner.
+                        Add a course to CampusFlow.
                     </p>
 
                 </div>
 
-
                 <button
-                    class="close-modal-button"
-                    id="closeCourseModalButton"
                     type="button"
-                    aria-label="Close"
+                    class="close-button"
+                    data-close-modal="courseModal"
                 >
                     ×
                 </button>
@@ -1402,7 +1524,6 @@
                             type="text"
                             id="courseCode"
                             maxlength="20"
-                            placeholder="CSCI 3410"
                             required
                         >
 
@@ -1419,7 +1540,6 @@
                             type="text"
                             id="courseName"
                             maxlength="80"
-                            placeholder="Database Systems"
                             required
                         >
 
@@ -1438,7 +1558,6 @@
                         type="text"
                         id="courseInstructor"
                         maxlength="80"
-                        placeholder="Professor Name"
                         required
                     >
 
@@ -1453,10 +1572,7 @@
                             Meeting Schedule
                         </label>
 
-                        <select
-                            id="courseDays"
-                            required
-                        >
+                        <select id="courseDays">
 
                             <option value="M/W/F">
                                 Monday / Wednesday / Friday
@@ -1468,10 +1584,6 @@
 
                             <option value="M/W">
                                 Monday / Wednesday
-                            </option>
-
-                            <option value="T/Th/F">
-                                Tuesday / Thursday / Friday
                             </option>
 
                             <option value="Online">
@@ -1505,11 +1617,10 @@
                     <button
                         type="button"
                         class="secondary-button"
-                        id="cancelCourseButton"
+                        data-close-modal="courseModal"
                     >
                         Cancel
                     </button>
-
 
                     <button
                         type="submit"
@@ -1529,43 +1640,35 @@
 
 
     <!-- ================================================= -->
-    <!-- DETAILS -->
+    <!-- GRADE MODAL -->
     <!-- ================================================= -->
 
     <div
+        id="gradeModal"
         class="modal-overlay"
-        id="detailsModal"
         aria-hidden="true"
     >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="detailsTitle"
-        >
+        <div class="modal">
 
             <div class="modal-header">
 
                 <div>
 
-                    <p
-                        class="details-label"
-                        id="detailsType"
-                    >
-                    </p>
-
-                    <h2 id="detailsTitle">
+                    <h2 id="gradeModalTitle">
+                        Add Grade
                     </h2>
+
+                    <p id="gradeModalDescription">
+                        Record a grade for one of your courses.
+                    </p>
 
                 </div>
 
-
                 <button
-                    class="close-modal-button"
-                    id="closeDetailsModalButton"
                     type="button"
-                    aria-label="Close"
+                    class="close-button"
+                    data-close-modal="gradeModal"
                 >
                     ×
                 </button>
@@ -1573,55 +1676,186 @@
             </div>
 
 
-            <div class="event-details-content">
+            <form id="gradeForm">
 
-                <div class="event-detail-section">
+                <div class="form-group">
+
+                    <label for="gradeCourse">
+                        Course
+                    </label>
+
+                    <select
+                        id="gradeCourse"
+                        required
+                    ></select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="gradeTitle">
+                        Graded Item
+                    </label>
+
+                    <input
+                        type="text"
+                        id="gradeTitle"
+                        maxlength="80"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="gradeCategory">
+                        Category
+                    </label>
+
+                    <select
+                        id="gradeCategory"
+                        required
+                    ></select>
+
+                </div>
+
+
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label for="pointsEarned">
+                            Points Earned
+                        </label>
+
+                        <input
+                            type="number"
+                            id="pointsEarned"
+                            min="0"
+                            step="0.01"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="pointsPossible">
+                            Points Possible
+                        </label>
+
+                        <input
+                            type="number"
+                            id="pointsPossible"
+                            min="0.01"
+                            step="0.01"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <div class="modal-actions">
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-close-modal="gradeModal"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="primary-button"
+                        id="gradeSubmitButton"
+                    >
+                        Add Grade
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- DETAILS MODAL -->
+    <!-- ================================================= -->
+
+    <div
+        id="detailsModal"
+        class="modal-overlay"
+        aria-hidden="true"
+    >
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <p
+                        id="detailsType"
+                        class="eyebrow"
+                    ></p>
+
+                    <h2 id="detailsTitle"></h2>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="close-button"
+                    data-close-modal="detailsModal"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="details-grid">
+
+                <div>
 
                     <h3 id="detailsDateLabel">
                         Date
                     </h3>
 
-                    <p id="detailsDate">
-                    </p>
+                    <p id="detailsDate"></p>
 
                 </div>
 
 
-                <div class="event-detail-section">
+                <div>
 
                     <h3 id="detailsCourseLabel">
                         Course
                     </h3>
 
-                    <p id="detailsCourse">
-                    </p>
+                    <p id="detailsCourse"></p>
 
                 </div>
 
 
-                <div class="event-detail-section">
+                <div class="details-description">
 
                     <h3>
                         Description
                     </h3>
 
-                    <p id="detailsDescription">
-                    </p>
+                    <p id="detailsDescription"></p>
 
                 </div>
-
-            </div>
-
-
-            <div class="modal-actions">
-
-                <button
-                    class="primary-button"
-                    id="closeDetailsButton"
-                    type="button"
-                >
-                    Close
-                </button>
 
             </div>
 
@@ -1636,5 +1870,4 @@
     ></script>
 
 </body>
-
 </html>
