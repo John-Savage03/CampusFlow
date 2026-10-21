@@ -1,73 +1,57 @@
-/*
-    assignments.js
-
-    Handles the Assignment & Exam Tracker,
-    filtering, creation, and status updates.
-*/
-
+/* assignments.js - assignment/exam tracker */
 
 import {
-    getTasks,
     getCourses,
+    getTasks,
     getCourseById,
     addTask,
-    updateTaskStatus
+    updateTaskStatus,
+    TASK_STATUSES
 }
 from "./state.js";
 
 
 import {
     createId,
+    cleanText,
+    cleanMultilineText,
+    isValidDateString,
     formatDate
 }
 from "./utils.js";
 
 
 import {
-    cleanText,
-    cleanMultilineText,
-    validateTask,
-    VALID_STATUSES
-}
-from "./validation.js";
-
-
-import {
-    openDetails
-}
-from "./details.js";
-
-
-import {
+    openModal,
+    closeModal,
+    openDetails,
     showMessage
 }
-from "./feedback.js";
+from "./ui.js";
 
 
-
-function createOption(
+function option(
     value,
     label
 ) {
 
-    const option =
+    const item =
         document.createElement(
             "option"
         );
 
 
-    option.value =
+    item.value =
         value;
 
 
-    option.textContent =
+    item.textContent =
         label;
 
 
-    return option;
+    return item;
 
 }
-
 
 
 function populateCourseSelectors() {
@@ -82,21 +66,31 @@ function populateCourseSelectors() {
         );
 
 
-    const courseFilter =
+    const filter =
         document.getElementById(
             "taskCourseFilter"
         );
 
 
-    const previousFilter =
-        courseFilter.value;
+    if (
+        !taskCourse ||
+        !filter
+    ) {
+
+        return;
+
+    }
+
+
+    const previous =
+        filter.value;
 
 
     taskCourse.replaceChildren();
 
 
-    courseFilter.replaceChildren(
-        createOption(
+    filter.replaceChildren(
+        option(
             "all",
             "All Courses"
         )
@@ -111,15 +105,15 @@ function populateCourseSelectors() {
 
 
             taskCourse.appendChild(
-                createOption(
+                option(
                     course.id,
                     label
                 )
             );
 
 
-            courseFilter.appendChild(
-                createOption(
+            filter.appendChild(
+                option(
                     course.id,
                     label
                 )
@@ -129,87 +123,38 @@ function populateCourseSelectors() {
     );
 
 
-    const filterStillExists =
+    filter.value =
         courses.some(
             course =>
                 course.id ===
-                previousFilter
-        );
-
-
-    courseFilter.value =
-        filterStillExists
-            ? previousFilter
+                previous
+        )
+            ? previous
             : "all";
 
 }
 
 
-
-function createTextCell(
-    value
+function cell(
+    text
 ) {
 
-    const cell =
+    const td =
         document.createElement(
             "td"
         );
 
 
-    cell.textContent =
-        value;
-
-
-    return cell;
-
-}
-
-
-
-function createBadgeCell(
-    text,
-    classes
-) {
-
-    const cell =
-        document.createElement(
-            "td"
-        );
-
-
-    const badge =
-        document.createElement(
-            "span"
-        );
-
-
-    classes.forEach(
-        className => {
-
-            badge.classList.add(
-                className
-            );
-
-        }
-    );
-
-
-    badge.textContent =
+    td.textContent =
         text;
 
 
-    cell.appendChild(
-        badge
-    );
-
-
-    return cell;
+    return td;
 
 }
 
 
-
-function openTaskDetails(
+function taskDetails(
     task
 ) {
 
@@ -221,42 +166,32 @@ function openTaskDetails(
 
     openDetails({
 
-        id:
-            task.id,
-
         source:
             "task",
 
         type:
             task.type,
 
-        topic:
+        title:
             task.title,
 
         date:
             task.dueDate,
 
-        description:
-            task.description,
-
-        priority:
-            task.priority,
-
-        status:
-            task.status,
-
         courseName:
             course
                 ? `${course.code} - ${course.name}`
-                : "Unknown Course"
+                : "Unknown Course",
+
+        description:
+            `${task.description || "No description provided."}\n\nPriority: ${task.priority}\nStatus: ${task.status}`
 
     });
 
 }
 
 
-
-export function renderTasks() {
+export function renderAssignments() {
 
     populateCourseSelectors();
 
@@ -267,25 +202,32 @@ export function renderTasks() {
         );
 
 
+    if (!body) {
+
+        return;
+
+    }
+
+
+    body.replaceChildren();
+
+
     const courseFilter =
         document.getElementById(
             "taskCourseFilter"
-        ).value;
+        )?.value || "all";
 
 
     const typeFilter =
         document.getElementById(
             "taskTypeFilter"
-        ).value;
+        )?.value || "all";
 
 
     const statusFilter =
         document.getElementById(
             "taskStatusFilter"
-        ).value;
-
-
-    body.replaceChildren();
+        )?.value || "all";
 
 
     let tasks =
@@ -335,15 +277,18 @@ export function renderTasks() {
 
 
     tasks.sort(
-        (firstTask, secondTask) =>
-            firstTask.dueDate.localeCompare(
-                secondTask.dueDate
+        (
+            first,
+            second
+        ) =>
+            first.dueDate.localeCompare(
+                second.dueDate
             )
     );
 
 
     if (
-        tasks.length === 0
+        !tasks.length
     ) {
 
         const row =
@@ -352,22 +297,18 @@ export function renderTasks() {
             );
 
 
-        const cell =
-            document.createElement(
-                "td"
+        const td =
+            cell(
+                "No assignments or exams match the current filters."
             );
 
 
-        cell.colSpan =
+        td.colSpan =
             6;
 
 
-        cell.textContent =
-            "No assignments or exams match the current filters.";
-
-
         row.appendChild(
-            cell
+            td
         );
 
 
@@ -396,63 +337,54 @@ export function renderTasks() {
                 );
 
 
-            row.classList.add(
-                "table-row-clickable"
+            row.className =
+                "clickable-row";
+
+
+            const typeCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            const badge =
+                document.createElement(
+                    "span"
+                );
+
+
+            badge.className =
+                `badge ${task.type}`;
+
+
+            badge.textContent =
+                task.type === "exam"
+                    ? "Exam"
+                    : "Assignment";
+
+
+            typeCell.appendChild(
+                badge
             );
 
 
-            row.appendChild(
-                createBadgeCell(
-
-                    task.type === "exam"
-                        ? "Exam"
-                        : "Assignment",
-
-                    [
-                        "badge",
-                        task.type
-                    ]
-
-                )
-            );
-
-
-            row.appendChild(
-                createTextCell(
+            row.append(
+                typeCell,
+                cell(
                     task.title
-                )
-            );
-
-
-            row.appendChild(
-                createTextCell(
+                ),
+                cell(
                     course
                         ? course.code
                         : "Unknown Course"
-                )
-            );
-
-
-            row.appendChild(
-                createTextCell(
+                ),
+                cell(
                     formatDate(
                         task.dueDate
                     )
-                )
-            );
-
-
-            row.appendChild(
-                createBadgeCell(
-
-                    task.priority,
-
-                    [
-                        "priority",
-                        task.priority
-                            .toLowerCase()
-                    ]
-
+                ),
+                cell(
+                    task.priority
                 )
             );
 
@@ -463,40 +395,35 @@ export function renderTasks() {
                 );
 
 
-            const statusSelect =
+            const select =
                 document.createElement(
                     "select"
                 );
 
 
-            statusSelect.classList.add(
-                "status-select"
-            );
+            select.className =
+                "status-select";
 
 
-            VALID_STATUSES.forEach(
+            TASK_STATUSES.forEach(
                 status => {
 
-                    const option =
-                        createOption(
+                    select.appendChild(
+                        option(
                             status,
                             status
-                        );
-
-
-                    statusSelect.appendChild(
-                        option
+                        )
                     );
 
                 }
             );
 
 
-            statusSelect.value =
+            select.value =
                 task.status;
 
 
-            statusSelect.addEventListener(
+            select.addEventListener(
                 "click",
                 event => {
 
@@ -506,50 +433,32 @@ export function renderTasks() {
             );
 
 
-            statusSelect.addEventListener(
+            select.addEventListener(
                 "change",
                 event => {
 
                     event.stopPropagation();
 
 
-                    const success =
-                        updateTaskStatus(
-
-                            task.id,
-
-                            statusSelect.value
-
-                        );
-
-
-                    if (!success) {
-
-                        showMessage(
-                            "Unable to update task status.",
-                            "error"
-                        );
-
-
-                        return;
-
-                    }
-
-
-                    showMessage(
-                        "Status updated.",
-                        "success"
+                    updateTaskStatus(
+                        task.id,
+                        select.value
                     );
 
 
-                    renderTasks();
+                    showMessage(
+                        "Task status updated."
+                    );
+
+
+                    renderAssignments();
 
                 }
             );
 
 
             statusCell.appendChild(
-                statusSelect
+                select
             );
 
 
@@ -562,7 +471,7 @@ export function renderTasks() {
                 "click",
                 () => {
 
-                    openTaskDetails(
+                    taskDetails(
                         task
                     );
 
@@ -580,269 +489,219 @@ export function renderTasks() {
 }
 
 
-
-function openTaskModal() {
-
-    populateCourseSelectors();
-
-
-    if (
-        getCourses().length === 0
-    ) {
-
-        showMessage(
-            "Create a course before adding an assignment or exam.",
-            "warning"
-        );
-
-
-        return;
-
-    }
-
-
-    const modal =
-        document.getElementById(
-            "taskModal"
-        );
-
-
-    modal.classList.add(
-        "show"
-    );
-
-
-    modal.setAttribute(
-        "aria-hidden",
-        "false"
-    );
-
-
-    document.getElementById(
-        "taskTitle"
-    ).focus();
-
-}
-
-
-
-function closeTaskModal() {
-
-    const modal =
-        document.getElementById(
-            "taskModal"
-        );
-
-
-    modal.classList.remove(
-        "show"
-    );
-
-
-    modal.setAttribute(
-        "aria-hidden",
-        "true"
-    );
-
-
-    document.getElementById(
-        "taskForm"
-    ).reset();
-
-}
-
-
-
 export function setupAssignments(
     refreshApplication
 ) {
 
-    const modal =
-        document.getElementById(
-            "taskModal"
+    [
+        "taskCourseFilter",
+        "taskTypeFilter",
+        "taskStatusFilter"
+    ].forEach(
+        id => {
+
+            document
+                .getElementById(
+                    id
+                )
+                ?.addEventListener(
+                    "change",
+                    renderAssignments
+                );
+
+        }
+    );
+
+
+    document
+        .getElementById(
+            "openTaskModalButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                populateCourseSelectors();
+
+
+                if (
+                    !getCourses().length
+                ) {
+
+                    return showMessage(
+                        "Create a course before adding coursework.",
+                        "warning"
+                    );
+
+                }
+
+
+                openModal(
+                    "taskModal"
+                );
+
+            }
         );
 
 
-    document.getElementById(
-        "openTaskModalButton"
-    ).addEventListener(
-        "click",
-        openTaskModal
-    );
+    document
+        .getElementById(
+            "taskForm"
+        )
+        ?.addEventListener(
+            "submit",
+            event => {
+
+                event.preventDefault();
 
 
-    document.getElementById(
-        "closeTaskModalButton"
-    ).addEventListener(
-        "click",
-        closeTaskModal
-    );
-
-
-    document.getElementById(
-        "cancelTaskButton"
-    ).addEventListener(
-        "click",
-        closeTaskModal
-    );
-
-
-    document.getElementById(
-        "taskForm"
-    ).addEventListener(
-        "submit",
-        event => {
-
-            event.preventDefault();
-
-
-            const newTask = {
-
-                id:
-                    createId(
-                        "task"
-                    ),
-
-                type:
+                const type =
                     document.getElementById(
                         "taskType"
-                    ).value,
+                    )?.value;
 
-                courseId:
+
+                const courseId =
                     document.getElementById(
                         "taskCourse"
-                    ).value,
+                    )?.value;
 
-                title:
+
+                const title =
                     cleanText(
                         document.getElementById(
                             "taskTitle"
-                        ).value,
+                        )?.value,
                         80
-                    ),
+                    );
 
-                dueDate:
+
+                const dueDate =
                     document.getElementById(
                         "taskDueDate"
-                    ).value,
+                    )?.value || "";
 
-                priority:
+
+                const priority =
                     document.getElementById(
                         "taskPriority"
-                    ).value,
+                    )?.value;
 
-                status:
+
+                const status =
                     document.getElementById(
                         "taskStatus"
-                    ).value,
+                    )?.value;
 
-                description:
+
+                const description =
                     cleanMultilineText(
                         document.getElementById(
                             "taskDescription"
-                        ).value,
+                        )?.value,
                         500
+                    );
+
+
+                if (
+                    ![
+                        "assignment",
+                        "exam"
+                    ].includes(
+                        type
                     )
+                ) {
 
-            };
+                    return showMessage(
+                        "Choose a valid coursework type.",
+                        "error"
+                    );
+
+                }
 
 
-            const errors =
-                validateTask(
-                    newTask
+                if (
+                    !getCourseById(
+                        courseId
+                    )
+                ) {
+
+                    return showMessage(
+                        "Choose a valid course.",
+                        "error"
+                    );
+
+                }
+
+
+                if (!title) {
+
+                    return showMessage(
+                        "Title is required.",
+                        "error"
+                    );
+
+                }
+
+
+                if (
+                    !isValidDateString(
+                        dueDate
+                    )
+                ) {
+
+                    return showMessage(
+                        "Choose a valid due date.",
+                        "error"
+                    );
+
+                }
+
+
+                addTask({
+
+                    id:
+                        createId(
+                            "task"
+                        ),
+
+                    type,
+
+                    courseId,
+
+                    title,
+
+                    dueDate,
+
+                    priority,
+
+                    status,
+
+                    description
+
+                });
+
+
+                document
+                    .getElementById(
+                        "taskForm"
+                    )
+                    .reset();
+
+
+                closeModal(
+                    "taskModal"
                 );
 
 
-            if (
-                !getCourseById(
-                    newTask.courseId
-                )
-            ) {
+                refreshApplication();
 
-                errors.push(
-                    "The selected course does not exist."
-                );
-
-            }
-
-
-            if (
-                errors.length > 0
-            ) {
 
                 showMessage(
-                    errors[0],
-                    "error"
+                    "Coursework added."
                 );
 
-
-                return;
-
             }
-
-
-            const persisted =
-                addTask(
-                    newTask
-                );
-
-
-            closeTaskModal();
-
-
-            refreshApplication();
-
-
-            showMessage(
-                persisted
-                    ? "Assignment or exam added."
-                    : "Item added, but browser storage was unavailable.",
-                persisted
-                    ? "success"
-                    : "warning"
-            );
-
-        }
-    );
-
-
-    document.getElementById(
-        "taskCourseFilter"
-    ).addEventListener(
-        "change",
-        renderTasks
-    );
-
-
-    document.getElementById(
-        "taskTypeFilter"
-    ).addEventListener(
-        "change",
-        renderTasks
-    );
-
-
-    document.getElementById(
-        "taskStatusFilter"
-    ).addEventListener(
-        "change",
-        renderTasks
-    );
-
-
-    modal.addEventListener(
-        "click",
-        event => {
-
-            if (
-                event.target === modal
-            ) {
-
-                closeTaskModal();
-
-            }
-
-        }
-    );
+        );
 
 }
