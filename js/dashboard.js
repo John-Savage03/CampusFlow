@@ -1,25 +1,21 @@
-/*
-    dashboard.js
-
-    Builds the Dashboard and Weekly Overview
-    from the same data used by the other features.
-*/
-
+/* dashboard.js - renders both role dashboards */
 
 import {
-    getTasks,
     getCourses,
+    getTasks,
+    getGrades,
     getCourseById,
+    getTasksForCourse,
     getCalendarItemsForDate
 }
 from "./state.js";
 
 
 import {
-    dateToString,
+    parseDateString,
     formatDate,
     formatTime,
-    parseDateString,
+    dateToString,
     courseMeetsOnDate
 }
 from "./utils.js";
@@ -28,11 +24,10 @@ from "./utils.js";
 import {
     openDetails
 }
-from "./details.js";
+from "./ui.js";
 
 
-
-function getUpcomingTasks() {
+function upcomingTasks() {
 
     const today =
         new Date();
@@ -48,295 +43,273 @@ function getUpcomingTasks() {
 
     return getTasks()
         .filter(
-            task => {
-
-                const dueDate =
-                    parseDateString(
-                        task.dueDate
-                    );
-
-
-                return (
-
-                    dueDate >= today &&
-
-                    task.status !==
-                        "Completed"
-
-                );
-
-            }
+            task =>
+                parseDateString(
+                    task.dueDate
+                ) >= today &&
+                task.status !==
+                    "Completed"
         )
         .sort(
-            (firstTask, secondTask) =>
-
-                firstTask.dueDate
-                    .localeCompare(
-                        secondTask.dueDate
-                    )
-
+            (
+                first,
+                second
+            ) =>
+                first.dueDate.localeCompare(
+                    second.dueDate
+                )
         );
 
 }
 
 
+function empty(
+    container,
+    text
+) {
 
-function renderSummaryCards() {
+    const p =
+        document.createElement(
+            "p"
+        );
+
+
+    p.className =
+        "empty-message";
+
+
+    p.textContent =
+        text;
+
+
+    container.appendChild(
+        p
+    );
+
+}
+
+
+function createTaskButton(
+    task
+) {
+
+    const course =
+        getCourseById(
+            task.courseId
+        );
+
+
+    const button =
+        document.createElement(
+            "button"
+        );
+
+
+    button.type =
+        "button";
+
+
+    button.className =
+        "assignment-preview";
+
+
+    const left =
+        document.createElement(
+            "div"
+        );
+
+
+    const title =
+        document.createElement(
+            "strong"
+        );
+
+
+    title.textContent =
+        task.title;
+
+
+    const sub =
+        document.createElement(
+            "p"
+        );
+
+
+    sub.textContent =
+        `${
+            task.type === "exam"
+                ? "Exam"
+                : "Assignment"
+        } • ${
+            course
+                ? course.code
+                : "Unknown Course"
+        }`;
+
+
+    left.append(
+        title,
+        sub
+    );
+
+
+    const date =
+        document.createElement(
+            "span"
+        );
+
+
+    date.className =
+        "task-date";
+
+
+    date.textContent =
+        formatDate(
+            task.dueDate
+        );
+
+
+    button.append(
+        left,
+        date
+    );
+
+
+    button.addEventListener(
+        "click",
+        () => {
+
+            openDetails({
+
+                source:
+                    "task",
+
+                type:
+                    task.type,
+
+                title:
+                    task.title,
+
+                date:
+                    task.dueDate,
+
+                courseName:
+                    course
+                        ? `${course.code} - ${course.name}`
+                        : "Unknown Course",
+
+                description:
+                    `${task.description || "No description provided."}\n\nPriority: ${task.priority}\nStatus: ${task.status}`
+
+            });
+
+        }
+    );
+
+
+    return button;
+
+}
+
+
+/* ================================================= */
+/* STUDENT DASHBOARD */
+/* ================================================= */
+
+function renderStudentSummary() {
+
+    const upcoming =
+        upcomingTasks();
+
 
     const tasks =
         getTasks();
 
 
-    const upcoming =
-        getUpcomingTasks();
-
-
-    const completed =
-        tasks.filter(
-            task =>
-                task.status ===
-                "Completed"
-        );
-
-
     document.getElementById(
-        "dashboardUpcomingCount"
+        "studentUpcomingCount"
     ).textContent =
         upcoming.length;
 
 
     document.getElementById(
-        "dashboardCourseCount"
+        "studentCourseCount"
     ).textContent =
         getCourses().length;
 
 
     document.getElementById(
-        "dashboardCompletedCount"
+        "studentCompletedCount"
     ).textContent =
-        completed.length;
+        tasks.filter(
+            task =>
+                task.status ===
+                "Completed"
+        ).length;
 
 
-    const nextDeadline =
+    const next =
         upcoming[0];
 
 
-    if (
-        nextDeadline
-    ) {
-
-        document.getElementById(
-            "dashboardNextDeadline"
-        ).textContent =
-            nextDeadline.title;
+    document.getElementById(
+        "studentNextDeadline"
+    ).textContent =
+        next
+            ? next.title
+            : "None";
 
 
-        document.getElementById(
-            "dashboardNextDeadlineDate"
-        ).textContent =
-            formatDate(
-                nextDeadline.dueDate
-            );
-
-    }
-
-    else {
-
-        document.getElementById(
-            "dashboardNextDeadline"
-        ).textContent =
-            "None";
-
-
-        document.getElementById(
-            "dashboardNextDeadlineDate"
-        ).textContent =
-            "No upcoming work";
-
-    }
+    document.getElementById(
+        "studentNextDeadlineDate"
+    ).textContent =
+        next
+            ? formatDate(
+                next.dueDate
+            )
+            : "No upcoming work";
 
 }
 
 
-
-function renderUpcomingList() {
+function renderStudentUpcoming() {
 
     const container =
         document.getElementById(
-            "dashboardUpcomingList"
+            "studentUpcomingList"
         );
 
 
     container.replaceChildren();
 
 
-    const upcoming =
-        getUpcomingTasks()
+    const items =
+        upcomingTasks()
             .slice(
                 0,
-                4
+                5
             );
 
 
     if (
-        upcoming.length === 0
+        !items.length
     ) {
 
-        const message =
-            document.createElement(
-                "p"
-            );
-
-
-        message.classList.add(
-            "empty-message"
+        return empty(
+            container,
+            "No upcoming assignments or exams."
         );
-
-
-        message.textContent =
-            "Nothing due soon.";
-
-
-        container.appendChild(
-            message
-        );
-
-
-        return;
 
     }
 
 
-    upcoming.forEach(
+    items.forEach(
         task => {
 
-            const course =
-                getCourseById(
-                    task.courseId
-                );
-
-
-            const button =
-                document.createElement(
-                    "button"
-                );
-
-
-            button.type =
-                "button";
-
-
-            button.classList.add(
-                "assignment-preview"
-            );
-
-
-            const left =
-                document.createElement(
-                    "div"
-                );
-
-
-            const title =
-                document.createElement(
-                    "strong"
-                );
-
-
-            title.textContent =
-                task.title;
-
-
-            const subtitle =
-                document.createElement(
-                    "p"
-                );
-
-
-            subtitle.textContent =
-                `${
-                    task.type === "exam"
-                        ? "Exam"
-                        : "Assignment"
-                } • ${
-                    course
-                        ? course.code
-                        : "Unknown Course"
-                }`;
-
-
-            left.append(
-                title,
-                subtitle
-            );
-
-
-            const date =
-                document.createElement(
-                    "span"
-                );
-
-
-            date.classList.add(
-                "task-date"
-            );
-
-
-            date.textContent =
-                formatDate(
-                    task.dueDate
-                );
-
-
-            button.append(
-                left,
-                date
-            );
-
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    openDetails({
-
-                        id:
-                            task.id,
-
-                        source:
-                            "task",
-
-                        type:
-                            task.type,
-
-                        topic:
-                            task.title,
-
-                        date:
-                            task.dueDate,
-
-                        description:
-                            task.description,
-
-                        priority:
-                            task.priority,
-
-                        status:
-                            task.status,
-
-                        courseName:
-                            course
-                                ? `${course.code} - ${course.name}`
-                                : "Unknown Course"
-
-                    });
-
-                }
-            );
-
-
             container.appendChild(
-                button
+                createTaskButton(
+                    task
+                )
             );
 
         }
@@ -345,12 +318,11 @@ function renderUpcomingList() {
 }
 
 
-
 function renderTodaySchedule() {
 
     const container =
         document.getElementById(
-            "dashboardTodaySchedule"
+            "studentTodaySchedule"
         );
 
 
@@ -371,41 +343,24 @@ function renderTodaySchedule() {
                     )
             )
             .sort(
-                (firstCourse, secondCourse) =>
-
-                    firstCourse.time
-                        .localeCompare(
-                            secondCourse.time
-                        )
-
+                (
+                    first,
+                    second
+                ) =>
+                    first.time.localeCompare(
+                        second.time
+                    )
             );
 
 
     if (
-        courses.length === 0
+        !courses.length
     ) {
 
-        const message =
-            document.createElement(
-                "p"
-            );
-
-
-        message.classList.add(
-            "empty-message"
+        return empty(
+            container,
+            "No classes scheduled today."
         );
-
-
-        message.textContent =
-            "No classes scheduled today.";
-
-
-        container.appendChild(
-            message
-        );
-
-
-        return;
 
     }
 
@@ -413,15 +368,14 @@ function renderTodaySchedule() {
     courses.forEach(
         course => {
 
-            const item =
+            const row =
                 document.createElement(
                     "div"
                 );
 
 
-            item.classList.add(
-                "schedule-item"
-            );
+            row.className =
+                "schedule-item";
 
 
             const time =
@@ -430,9 +384,8 @@ function renderTodaySchedule() {
                 );
 
 
-            time.classList.add(
-                "schedule-time"
-            );
+            time.className =
+                "schedule-time";
 
 
             time.textContent =
@@ -441,7 +394,7 @@ function renderTodaySchedule() {
                 );
 
 
-            const details =
+            const info =
                 document.createElement(
                     "div"
                 );
@@ -467,20 +420,20 @@ function renderTodaySchedule() {
                 course.code;
 
 
-            details.append(
+            info.append(
                 name,
                 code
             );
 
 
-            item.append(
+            row.append(
                 time,
-                details
+                info
             );
 
 
             container.appendChild(
-                item
+                row
             );
 
         }
@@ -489,12 +442,18 @@ function renderTodaySchedule() {
 }
 
 
+/* ================================================= */
+/* SHARED WEEK VIEW */
+/* ================================================= */
 
-function renderWeeklyOverview() {
+function renderWeek(
+    containerId,
+    includeClasses
+) {
 
     const container =
         document.getElementById(
-            "weeklyOverview"
+            containerId
         );
 
 
@@ -511,6 +470,10 @@ function renderWeeklyOverview() {
         0,
         0
     );
+
+
+    const courses =
+        getCourses();
 
 
     for (
@@ -531,52 +494,31 @@ function renderWeeklyOverview() {
         );
 
 
-        const dateString =
-            dateToString(
-                date
-            );
-
-
-        const items =
-            getCalendarItemsForDate(
-                dateString
-            );
-
-
         const card =
             document.createElement(
                 "div"
             );
 
 
-        card.classList.add(
-            "week-day-card"
-        );
+        card.className =
+            `week-day-card${
+                offset === 0
+                    ? " today"
+                    : ""
+            }`;
 
 
-        if (
-            offset === 0
-        ) {
-
-            card.classList.add(
-                "today"
-            );
-
-        }
-
-
-        const weekday =
+        const dayName =
             document.createElement(
                 "div"
             );
 
 
-        weekday.classList.add(
-            "week-day-name"
-        );
+        dayName.className =
+            "week-day-name";
 
 
-        weekday.textContent =
+        dayName.textContent =
             date.toLocaleDateString(
                 "en-US",
                 {
@@ -585,18 +527,17 @@ function renderWeeklyOverview() {
             );
 
 
-        const dateLabel =
+        const dayDate =
             document.createElement(
                 "div"
             );
 
 
-        dateLabel.classList.add(
-            "week-day-date"
-        );
+        dayDate.className =
+            "week-day-date";
 
 
-        dateLabel.textContent =
+        dayDate.textContent =
             date.toLocaleDateString(
                 "en-US",
                 {
@@ -607,108 +548,177 @@ function renderWeeklyOverview() {
 
 
         card.append(
-            weekday,
-            dateLabel
+            dayName,
+            dayDate
         );
 
 
+        let count =
+            0;
+
+
         if (
-            items.length === 0
+            includeClasses
         ) {
 
-            const empty =
-                document.createElement(
-                    "span"
-                );
-
-
-            empty.classList.add(
-                "empty-message"
-            );
-
-
-            empty.textContent =
-                "Clear";
-
-
-            card.appendChild(
-                empty
-            );
-
-        }
-
-
-        else {
-
-            items
+            courses
+                .filter(
+                    course =>
+                        courseMeetsOnDate(
+                            course.days,
+                            date
+                        )
+                )
                 .slice(
                     0,
-                    3
+                    2
                 )
                 .forEach(
-                    item => {
+                    course => {
 
-                        const button =
+                        const item =
                             document.createElement(
                                 "button"
                             );
 
 
-                        button.type =
+                        item.type =
                             "button";
 
 
-                        button.classList.add(
-                            "week-item"
-                        );
+                        item.className =
+                            "week-item";
 
 
-                        if (
-                            item.type ===
-                            "assignment"
-                        ) {
-
-                            button.classList.add(
-                                "assignment"
-                            );
-
-                        }
+                        item.textContent =
+                            `${course.code} ${formatTime(course.time)}`;
 
 
-                        if (
-                            item.type ===
-                            "exam"
-                        ) {
-
-                            button.classList.add(
-                                "exam"
-                            );
-
-                        }
-
-
-                        button.textContent =
-                            item.topic;
-
-
-                        button.addEventListener(
+                        item.addEventListener(
                             "click",
                             () => {
 
-                                openDetails(
-                                    item
-                                );
+                                openDetails({
+
+                                    source:
+                                        "course",
+
+                                    type:
+                                        "course",
+
+                                    title:
+                                        `${course.code} - ${course.name}`,
+
+                                    schedule:
+                                        `${course.days} • ${formatTime(course.time)}`,
+
+                                    instructor:
+                                        course.instructor,
+
+                                    description:
+                                        `${getTasksForCourse(course.id).length} coursework items tracked.`
+
+                                });
 
                             }
                         );
 
 
                         card.appendChild(
-                            button
+                            item
                         );
+
+
+                        count++;
 
                     }
                 );
+
+        }
+
+
+        getCalendarItemsForDate(
+            dateToString(
+                date
+            )
+        )
+            .slice(
+                0,
+                Math.max(
+                    0,
+                    3 - count
+                )
+            )
+            .forEach(
+                calendarItem => {
+
+                    const item =
+                        document.createElement(
+                            "button"
+                        );
+
+
+                    item.type =
+                        "button";
+
+
+                    item.className =
+                        `week-item ${
+                            calendarItem.type === "assignment" ||
+                            calendarItem.type === "exam"
+                                ? calendarItem.type
+                                : ""
+                        }`;
+
+
+                    item.textContent =
+                        calendarItem.title;
+
+
+                    item.addEventListener(
+                        "click",
+                        () => {
+
+                            openDetails(
+                                calendarItem
+                            );
+
+                        }
+                    );
+
+
+                    card.appendChild(
+                        item
+                    );
+
+
+                    count++;
+
+                }
+            );
+
+
+        if (
+            !count
+        ) {
+
+            const clear =
+                document.createElement(
+                    "span"
+                );
+
+
+            clear.className =
+                "empty-message";
+
+
+            clear.textContent =
+                "Clear";
+
+
+            card.appendChild(
+                clear
+            );
 
         }
 
@@ -722,15 +732,261 @@ function renderWeeklyOverview() {
 }
 
 
+/* ================================================= */
+/* PROFESSOR DASHBOARD */
+/* ================================================= */
 
-export function renderDashboard() {
+function renderProfessorSummary() {
 
-    renderSummaryCards();
+    document.getElementById(
+        "professorCourseCount"
+    ).textContent =
+        getCourses().length;
 
-    renderUpcomingList();
+
+    document.getElementById(
+        "professorCourseworkCount"
+    ).textContent =
+        getTasks().length;
+
+
+    document.getElementById(
+        "professorGradeCount"
+    ).textContent =
+        getGrades().length;
+
+
+    document.getElementById(
+        "professorUpcomingCount"
+    ).textContent =
+        upcomingTasks().length;
+
+}
+
+
+function renderProfessorCourses() {
+
+    const container =
+        document.getElementById(
+            "professorCourseOverview"
+        );
+
+
+    container.replaceChildren();
+
+
+    const courses =
+        getCourses();
+
+
+    if (
+        !courses.length
+    ) {
+
+        return empty(
+            container,
+            "No courses have been created."
+        );
+
+    }
+
+
+    courses.forEach(
+        course => {
+
+            const tasks =
+                getTasksForCourse(
+                    course.id
+                );
+
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.type =
+                "button";
+
+
+            button.className =
+                "professor-course-item";
+
+
+            const left =
+                document.createElement(
+                    "div"
+                );
+
+
+            const title =
+                document.createElement(
+                    "strong"
+                );
+
+
+            title.textContent =
+                `${course.code} - ${course.name}`;
+
+
+            const schedule =
+                document.createElement(
+                    "p"
+                );
+
+
+            schedule.textContent =
+                course.days === "Online"
+                    ? "Online"
+                    : `${course.days} • ${formatTime(course.time)}`;
+
+
+            left.append(
+                title,
+                schedule
+            );
+
+
+            const count =
+                document.createElement(
+                    "span"
+                );
+
+
+            count.className =
+                "professor-course-count";
+
+
+            count.textContent =
+                `${tasks.length} coursework item${
+                    tasks.length === 1
+                        ? ""
+                        : "s"
+                }`;
+
+
+            button.append(
+                left,
+                count
+            );
+
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    openDetails({
+
+                        source:
+                            "course",
+
+                        type:
+                            "course",
+
+                        title:
+                            `${course.code} - ${course.name}`,
+
+                        schedule:
+                            course.days === "Online"
+                                ? "Online"
+                                : `${course.days} • ${formatTime(course.time)}`,
+
+                        instructor:
+                            course.instructor,
+
+                        description:
+                            `${tasks.length} coursework items tracked.`
+
+                    });
+
+                }
+            );
+
+
+            container.appendChild(
+                button
+            );
+
+        }
+    );
+
+}
+
+
+function renderProfessorUpcoming() {
+
+    const container =
+        document.getElementById(
+            "professorUpcomingList"
+        );
+
+
+    container.replaceChildren();
+
+
+    const items =
+        upcomingTasks()
+            .slice(
+                0,
+                5
+            );
+
+
+    if (
+        !items.length
+    ) {
+
+        return empty(
+            container,
+            "No upcoming coursework."
+        );
+
+    }
+
+
+    items.forEach(
+        task => {
+
+            container.appendChild(
+                createTaskButton(
+                    task
+                )
+            );
+
+        }
+    );
+
+}
+
+
+/* ================================================= */
+/* PUBLIC RENDER */
+/* ================================================= */
+
+export function renderDashboards() {
+
+    renderStudentSummary();
+
+    renderStudentUpcoming();
 
     renderTodaySchedule();
 
-    renderWeeklyOverview();
+    renderWeek(
+        "studentWeeklyOverview",
+        false
+    );
+
+
+    renderProfessorSummary();
+
+    renderProfessorCourses();
+
+    renderProfessorUpcoming();
+
+    renderWeek(
+        "professorWeeklyOverview",
+        true
+    );
 
 }
