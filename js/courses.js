@@ -1,10 +1,4 @@
-/*
-    courses.js
-
-    Handles course creation and
-    course management rendering.
-*/
-
+/* courses.js - course management */
 
 import {
     getCourses,
@@ -16,236 +10,30 @@ from "./state.js";
 
 import {
     createId,
+    cleanText,
     formatTime
 }
 from "./utils.js";
 
 
 import {
-    cleanText,
-    validateCourse
-}
-from "./validation.js";
-
-
-import {
-    openDetails
-}
-from "./details.js";
-
-
-import {
+    openModal,
+    closeModal,
+    openDetails,
     showMessage
 }
-from "./feedback.js";
+from "./ui.js";
 
 
-
-function getScheduleText(
+function scheduleText(
     course
 ) {
 
-    if (
-        course.days === "Online"
-    ) {
-
-        return "Online";
-
-    }
-
-
-    return (
-        `${course.days} • ${formatTime(course.time)}`
-    );
+    return course.days === "Online"
+        ? "Online"
+        : `${course.days} • ${formatTime(course.time)}`;
 
 }
-
-
-
-function createCourseCard(
-    course
-) {
-
-    const tasks =
-        getTasksForCourse(
-            course.id
-        );
-
-
-    const card =
-        document.createElement(
-            "article"
-        );
-
-
-    card.classList.add(
-        "course-card"
-    );
-
-
-    const colorBar =
-        document.createElement(
-            "div"
-        );
-
-
-    colorBar.classList.add(
-        "course-color"
-    );
-
-
-    const code =
-        document.createElement(
-            "h2"
-        );
-
-
-    code.textContent =
-        course.code;
-
-
-    const name =
-        document.createElement(
-            "h3"
-        );
-
-
-    name.textContent =
-        course.name;
-
-
-    const instructor =
-        document.createElement(
-            "p"
-        );
-
-
-    instructor.textContent =
-        `Instructor: ${course.instructor}`;
-
-
-    const schedule =
-        document.createElement(
-            "p"
-        );
-
-
-    schedule.textContent =
-        getScheduleText(
-            course
-        );
-
-
-    const footer =
-        document.createElement(
-            "div"
-        );
-
-
-    footer.classList.add(
-        "course-footer"
-    );
-
-
-    const itemCount =
-        document.createElement(
-            "span"
-        );
-
-
-    itemCount.textContent =
-        `${tasks.length} ${
-            tasks.length === 1
-                ? "Item"
-                : "Items"
-        }`;
-
-
-    const viewButton =
-        document.createElement(
-            "button"
-        );
-
-
-    viewButton.type =
-        "button";
-
-
-    viewButton.textContent =
-        "View Course";
-
-
-    viewButton.addEventListener(
-        "click",
-        () => {
-
-            const assignmentCount =
-                tasks.filter(
-                    task =>
-                        task.type ===
-                        "assignment"
-                ).length;
-
-
-            const examCount =
-                tasks.filter(
-                    task =>
-                        task.type ===
-                        "exam"
-                ).length;
-
-
-            openDetails({
-
-                id:
-                    course.id,
-
-                source:
-                    "course",
-
-                type:
-                    "course",
-
-                topic:
-                    `${course.code} - ${course.name}`,
-
-                schedule:
-                    getScheduleText(
-                        course
-                    ),
-
-                instructor:
-                    course.instructor,
-
-                description:
-                    `Assignments: ${assignmentCount}\nExams: ${examCount}`
-
-            });
-
-        }
-    );
-
-
-    footer.append(
-        itemCount,
-        viewButton
-    );
-
-
-    card.append(
-        colorBar,
-        code,
-        name,
-        instructor,
-        schedule,
-        footer
-    );
-
-
-    return card;
-
-}
-
 
 
 export function renderCourses() {
@@ -256,6 +44,13 @@ export function renderCourses() {
         );
 
 
+    if (!grid) {
+
+        return;
+
+    }
+
+
     grid.replaceChildren();
 
 
@@ -263,42 +58,165 @@ export function renderCourses() {
         getCourses();
 
 
-    if (
-        courses.length === 0
-    ) {
-
-        const message =
-            document.createElement(
-                "p"
-            );
-
-
-        message.classList.add(
-            "empty-message"
-        );
-
-
-        message.textContent =
-            "No courses have been created.";
-
-
-        grid.appendChild(
-            message
-        );
-
-
-        return;
-
-    }
-
-
     courses.forEach(
         course => {
 
-            grid.appendChild(
-                createCourseCard(
+            const tasks =
+                getTasksForCourse(
+                    course.id
+                );
+
+
+            const card =
+                document.createElement(
+                    "article"
+                );
+
+
+            card.className =
+                "course-card";
+
+
+            const accent =
+                document.createElement(
+                    "div"
+                );
+
+
+            accent.className =
+                "course-accent";
+
+
+            const code =
+                document.createElement(
+                    "h2"
+                );
+
+
+            code.textContent =
+                course.code;
+
+
+            const name =
+                document.createElement(
+                    "h3"
+                );
+
+
+            name.textContent =
+                course.name;
+
+
+            const instructor =
+                document.createElement(
+                    "p"
+                );
+
+
+            instructor.textContent =
+                `Instructor: ${course.instructor}`;
+
+
+            const schedule =
+                document.createElement(
+                    "p"
+                );
+
+
+            schedule.textContent =
+                scheduleText(
                     course
-                )
+                );
+
+
+            const footer =
+                document.createElement(
+                    "div"
+                );
+
+
+            footer.className =
+                "course-footer";
+
+
+            const count =
+                document.createElement(
+                    "span"
+                );
+
+
+            count.textContent =
+                `${tasks.length} coursework item${
+                    tasks.length === 1
+                        ? ""
+                        : "s"
+                }`;
+
+
+            const view =
+                document.createElement(
+                    "button"
+                );
+
+
+            view.type =
+                "button";
+
+
+            view.textContent =
+                "View Course";
+
+
+            view.addEventListener(
+                "click",
+                () => {
+
+                    openDetails({
+
+                        source:
+                            "course",
+
+                        type:
+                            "course",
+
+                        title:
+                            `${course.code} - ${course.name}`,
+
+                        schedule:
+                            scheduleText(
+                                course
+                            ),
+
+                        instructor:
+                            course.instructor,
+
+                        description:
+                            `${tasks.length} coursework items are currently linked to this course.`
+
+                    });
+
+                }
+            );
+
+
+            footer.append(
+                count,
+                view
+            );
+
+
+            card.append(
+                accent,
+                code,
+                name,
+                instructor,
+                schedule,
+                footer
+            );
+
+
+            grid.appendChild(
+                card
             );
 
         }
@@ -307,38 +225,42 @@ export function renderCourses() {
 }
 
 
+function updateTimeRequirement() {
 
-function updateCourseTimeInput() {
-
-    const schedule =
+    const days =
         document.getElementById(
             "courseDays"
-        ).value;
+        )?.value;
 
 
-    const timeInput =
+    const time =
         document.getElementById(
             "courseTime"
         );
 
 
-    const isOnline =
-        schedule === "Online";
+    if (!time) {
+
+        return;
+
+    }
 
 
-    timeInput.disabled =
-        isOnline;
+    const online =
+        days === "Online";
 
 
-    timeInput.required =
-        !isOnline;
+    time.disabled =
+        online;
 
 
-    if (
-        isOnline
-    ) {
+    time.required =
+        !online;
 
-        timeInput.value =
+
+    if (online) {
+
+        time.value =
             "";
 
     }
@@ -346,230 +268,181 @@ function updateCourseTimeInput() {
 }
 
 
-
-function openCourseModal() {
-
-    const modal =
-        document.getElementById(
-            "courseModal"
-        );
-
-
-    updateCourseTimeInput();
-
-
-    modal.classList.add(
-        "show"
-    );
-
-
-    modal.setAttribute(
-        "aria-hidden",
-        "false"
-    );
-
-
-    document.getElementById(
-        "courseCode"
-    ).focus();
-
-}
-
-
-
-function closeCourseModal() {
-
-    const modal =
-        document.getElementById(
-            "courseModal"
-        );
-
-
-    modal.classList.remove(
-        "show"
-    );
-
-
-    modal.setAttribute(
-        "aria-hidden",
-        "true"
-    );
-
-
-    document.getElementById(
-        "courseForm"
-    ).reset();
-
-
-    updateCourseTimeInput();
-
-}
-
-
-
 export function setupCourses(
     refreshApplication
 ) {
 
-    const modal =
-        document.getElementById(
-            "courseModal"
+    document
+        .getElementById(
+            "courseDays"
+        )
+        ?.addEventListener(
+            "change",
+            updateTimeRequirement
         );
 
 
-    document.getElementById(
-        "courseDays"
-    ).addEventListener(
-        "change",
-        updateCourseTimeInput
-    );
+    updateTimeRequirement();
 
 
-    document.getElementById(
-        "openCourseModalButton"
-    ).addEventListener(
-        "click",
-        openCourseModal
-    );
+    document
+        .getElementById(
+            "openCourseModalButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                openModal(
+                    "courseModal"
+                );
+
+            }
+        );
 
 
-    document.getElementById(
-        "closeCourseModalButton"
-    ).addEventListener(
-        "click",
-        closeCourseModal
-    );
+    document
+        .getElementById(
+            "courseForm"
+        )
+        ?.addEventListener(
+            "submit",
+            event => {
+
+                event.preventDefault();
 
 
-    document.getElementById(
-        "cancelCourseButton"
-    ).addEventListener(
-        "click",
-        closeCourseModal
-    );
-
-
-    document.getElementById(
-        "courseForm"
-    ).addEventListener(
-        "submit",
-        event => {
-
-            event.preventDefault();
-
-
-            const schedule =
-                document.getElementById(
-                    "courseDays"
-                ).value;
-
-
-            const course = {
-
-                id:
-                    createId(
-                        "course"
-                    ),
-
-                code:
+                const code =
                     cleanText(
                         document.getElementById(
                             "courseCode"
-                        ).value,
+                        )?.value,
                         20
-                    ).toUpperCase(),
+                    ).toUpperCase();
 
-                name:
+
+                const name =
                     cleanText(
                         document.getElementById(
                             "courseName"
-                        ).value,
+                        )?.value,
                         80
-                    ),
+                    );
 
-                instructor:
+
+                const instructor =
                     cleanText(
                         document.getElementById(
                             "courseInstructor"
-                        ).value,
+                        )?.value,
                         80
-                    ),
+                    );
 
-                days:
-                    schedule,
 
-                time:
-                    schedule === "Online"
+                const days =
+                    document.getElementById(
+                        "courseDays"
+                    )?.value || "";
+
+
+                const time =
+                    days === "Online"
                         ? ""
-                        : document.getElementById(
-                            "courseTime"
-                        ).value
+                        : (
+                            document.getElementById(
+                                "courseTime"
+                            )?.value || ""
+                        );
 
-            };
+
+                if (
+                    !code ||
+                    !name ||
+                    !instructor
+                ) {
+
+                    return showMessage(
+                        "Complete all required course fields.",
+                        "error"
+                    );
+
+                }
 
 
-            const errors =
-                validateCourse(
-                    course
+                if (
+                    days !== "Online" &&
+                    !/^([01]\d|2[0-3]):[0-5]\d$/.test(
+                        time
+                    )
+                ) {
+
+                    return showMessage(
+                        "Choose a valid meeting time.",
+                        "error"
+                    );
+
+                }
+
+
+                if (
+                    getCourses().some(
+                        course =>
+                            course.code.toLowerCase() ===
+                            code.toLowerCase()
+                    )
+                ) {
+
+                    return showMessage(
+                        "That course code already exists.",
+                        "warning"
+                    );
+
+                }
+
+
+                addCourse({
+
+                    id:
+                        createId(
+                            "course"
+                        ),
+
+                    code,
+
+                    name,
+
+                    instructor,
+
+                    days,
+
+                    time
+
+                });
+
+
+                document
+                    .getElementById(
+                        "courseForm"
+                    )
+                    .reset();
+
+
+                updateTimeRequirement();
+
+
+                closeModal(
+                    "courseModal"
                 );
 
 
-            if (
-                errors.length > 0
-            ) {
+                refreshApplication();
+
 
                 showMessage(
-                    errors[0],
-                    "error"
+                    "Course added."
                 );
 
-
-                return;
-
             }
-
-
-            const persisted =
-                addCourse(
-                    course
-                );
-
-
-            closeCourseModal();
-
-
-            refreshApplication();
-
-
-            showMessage(
-                persisted
-                    ? "Course added."
-                    : "Course added, but browser storage was unavailable.",
-                persisted
-                    ? "success"
-                    : "warning"
-            );
-
-        }
-    );
-
-
-    modal.addEventListener(
-        "click",
-        event => {
-
-            if (
-                event.target === modal
-            ) {
-
-                closeCourseModal();
-
-            }
-
-        }
-    );
-
-
-    updateCourseTimeInput();
+        );
 
 }
