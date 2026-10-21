@@ -232,3 +232,41 @@ CampusFlow/
     ├── dashboard.js
     ├── role.js
     └── professor.js
+
+# Authentication setup (updated)
+
+- `signup.html` saves newly created accounts in this browser's `localStorage` under `campusFlowUsers`. Passwords are stored as salted PBKDF2 hashes, not plain text.
+- `login.html` uses the same saved account list, so newly registered usernames and passwords can be used to log in.
+- Successful login opens `index.html`. That is the main application and already contains the Student and Professor interfaces; separate `student.html` and `professor.html` files are not needed for this version.
+- `js/auth-guard.js` requires a logged-in session, locks Student accounts to Student View, and adds Log Out. Professor accounts start in Professor View and can use the role selector.
+
+Run the project through a local web server (such as VS Code Live Server), not by opening the HTML files directly. Accounts are stored per browser and are only suitable for a class/demo prototype; production authentication requires a server and database.
+
+
+## Task Organizer
+
+- Sorts unfinished assignments and exams by deadline.
+- Shows overdue, due today, and upcoming deadline labels.
+- Places unfinished work before completed work in the assignment list.
+- Keeps the dashboard focused on the four most urgent unfinished tasks.
+
+## Project and Subtask Manager
+
+- Create projects with deadlines.
+- Break projects into smaller checklist tasks.
+- Mark subtasks complete and track progress.
+- Remove subtasks or delete projects.
+
+## Course Materials and Notes Organizer
+
+- Save notes, documents, readings, videos, links, and other resources.
+- Connect each item to a course.
+- Add a title, resource link, and notes or description.
+- Filter saved materials by course and delete items when they are no longer needed.
+
+## Student and Professor Accounts
+
+- Users can sign up and log in as a student or professor.
+- The app opens the matching view after login.
+- Student and professor views provide different academic information.
+- Demo account and application data are stored in the browser.
