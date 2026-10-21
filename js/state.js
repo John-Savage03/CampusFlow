@@ -1,4 +1,18 @@
-/* state.js - central application data layer */
+/*
+    state.js
+
+    Central CampusFlow application data layer.
+
+    Sprint 3 update:
+
+    Academic data is now stored separately for each
+    logged-in account.
+
+    This prevents different accounts on the same
+    browser from seeing one another's courses,
+    assignments, events, and grades.
+*/
+
 
 import {
     loadData,
@@ -13,25 +27,68 @@ import {
 from "./utils.js";
 
 
+import {
+    getScopedStorageKey
+}
+from "./account-storage.js";
+
+
+
+/* ================================================= */
+/* STORAGE KEYS */
+/* ================================================= */
+
+/*
+    Role remains a normal application setting because
+    auth-guard.js sets it from the logged-in account.
+
+    Academic data uses account-specific keys.
+*/
+
 const KEYS = {
 
     role:
         "campusflow-v2-role",
 
     courses:
-        "campusflow-v2-courses",
+        getScopedStorageKey(
+            "campusflow-v2-courses",
+            {
+                migrateLegacy: true
+            }
+        ),
 
     tasks:
-        "campusflow-v2-tasks",
+        getScopedStorageKey(
+            "campusflow-v2-tasks",
+            {
+                migrateLegacy: true
+            }
+        ),
 
     events:
-        "campusflow-v2-events",
+        getScopedStorageKey(
+            "campusflow-v2-events",
+            {
+                migrateLegacy: true
+            }
+        ),
 
     grades:
-        "campusflow-v2-grades"
+        getScopedStorageKey(
+            "campusflow-v2-grades",
+            {
+                migrateLegacy: true
+            }
+        )
 
 };
 
+
+
+/* ================================================= */
+/* VALID VALUES */
+/* ================================================= */
 
 export const GRADE_CATEGORIES = [
     "Homework",
@@ -58,91 +115,16 @@ export const TASK_PRIORITIES = [
 ];
 
 
-const defaultCourses = [
-
-    {
-        id: "course-1",
-        code: "CSCI 3410",
-        name: "Database Systems",
-        instructor: "Professor Name",
-        days: "M/W/F",
-        time: "09:00"
-    },
-
-    {
-        id: "course-2",
-        code: "CSCI 3000",
-        name: "Software Engineering",
-        instructor: "Professor Name",
-        days: "M/W",
-        time: "11:00"
-    },
-
-    {
-        id: "course-3",
-        code: "POLS 3000",
-        name: "International Relations",
-        instructor: "Professor Name",
-        days: "T/Th",
-        time: "13:00"
-    }
-
+const VALID_ROLES = [
+    "student",
+    "professor"
 ];
 
 
-const defaultTasks = [
 
-    {
-        id: "task-1",
-        type: "assignment",
-        title: "Database Homework",
-        courseId: "course-1",
-        dueDate: "2026-10-21",
-        priority: "High",
-        status: "In Progress",
-        description:
-            "Complete the current database homework."
-    },
-
-    {
-        id: "task-2",
-        type: "exam",
-        title: "Database Exam",
-        courseId: "course-1",
-        dueDate: "2026-10-24",
-        priority: "High",
-        status: "Not Started",
-        description:
-            "Review relational design and SQL concepts."
-    },
-
-    {
-        id: "task-3",
-        type: "assignment",
-        title: "CampusFlow Sprint 2",
-        courseId: "course-2",
-        dueDate: "2026-10-28",
-        priority: "High",
-        status: "In Progress",
-        description:
-            "Complete Sprint 2 CampusFlow features."
-    }
-
-];
-
-
-const defaultEvents = [
-
-    {
-        id: "event-1",
-        topic: "Study Session",
-        date: "2026-10-22",
-        description:
-            "Review upcoming coursework."
-    }
-
-];
-
+/* ================================================= */
+/* COPY HELPER */
+/* ================================================= */
 
 function copy(
     items
@@ -156,6 +138,11 @@ function copy(
 
 }
 
+
+
+/* ================================================= */
+/* DATA VALIDATION */
+/* ================================================= */
 
 function validCourse(
     course
@@ -186,6 +173,7 @@ function validCourse(
     );
 
 }
+
 
 
 function validTask(
@@ -229,6 +217,7 @@ function validTask(
 }
 
 
+
 function validEvent(
     event
 ) {
@@ -250,6 +239,7 @@ function validEvent(
     );
 
 }
+
 
 
 function validGrade(
@@ -290,16 +280,20 @@ function validGrade(
 }
 
 
+
+/* ================================================= */
+/* SAFE COLLECTION LOADER */
+/* ================================================= */
+
 function loadCollection(
     key,
-    fallback,
     validator
 ) {
 
     const loaded =
         loadData(
             key,
-            null
+            []
         );
 
 
@@ -309,9 +303,7 @@ function loadCollection(
         )
     ) {
 
-        return copy(
-            fallback
-        );
+        return [];
 
     }
 
@@ -323,6 +315,46 @@ function loadCollection(
 }
 
 
+
+/* ================================================= */
+/* APPLICATION STATE */
+/* ================================================= */
+
+/*
+    New accounts intentionally start empty.
+
+    The first existing account to use this version
+    automatically receives the old shared data.
+*/
+
+let courses =
+    loadCollection(
+        KEYS.courses,
+        validCourse
+    );
+
+
+let tasks =
+    loadCollection(
+        KEYS.tasks,
+        validTask
+    );
+
+
+let events =
+    loadCollection(
+        KEYS.events,
+        validEvent
+    );
+
+
+let grades =
+    loadCollection(
+        KEYS.grades,
+        validGrade
+    );
+
+
 let activeRole =
     loadData(
         KEYS.role,
@@ -331,10 +363,7 @@ let activeRole =
 
 
 if (
-    ![
-        "student",
-        "professor"
-    ].includes(
+    !VALID_ROLES.includes(
         activeRole
     )
 ) {
@@ -344,49 +373,6 @@ if (
 
 }
 
-
-let courses =
-    loadCollection(
-        KEYS.courses,
-        defaultCourses,
-        validCourse
-    );
-
-
-if (
-    courses.length === 0
-) {
-
-    courses =
-        copy(
-            defaultCourses
-        );
-
-}
-
-
-let tasks =
-    loadCollection(
-        KEYS.tasks,
-        defaultTasks,
-        validTask
-    );
-
-
-let events =
-    loadCollection(
-        KEYS.events,
-        defaultEvents,
-        validEvent
-    );
-
-
-let grades =
-    loadCollection(
-        KEYS.grades,
-        [],
-        validGrade
-    );
 
 
 /* ================================================= */
@@ -400,15 +386,13 @@ export function getActiveRole() {
 }
 
 
+
 export function setActiveRole(
     role
 ) {
 
     if (
-        ![
-            "student",
-            "professor"
-        ].includes(
+        !VALID_ROLES.includes(
             role
         )
     ) {
@@ -430,6 +414,7 @@ export function setActiveRole(
 }
 
 
+
 /* ================================================= */
 /* COURSES */
 /* ================================================= */
@@ -441,6 +426,7 @@ export function getCourses() {
     );
 
 }
+
 
 
 export function getCourseById(
@@ -463,6 +449,7 @@ export function getCourseById(
 }
 
 
+
 export function addCourse(
     course
 ) {
@@ -480,8 +467,9 @@ export function addCourse(
 }
 
 
+
 /* ================================================= */
-/* TASKS */
+/* TASKS */ 
 /* ================================================= */
 
 export function getTasks() {
@@ -491,6 +479,7 @@ export function getTasks() {
     );
 
 }
+
 
 
 export function getTasksForCourse(
@@ -508,6 +497,7 @@ export function getTasksForCourse(
 }
 
 
+
 export function addTask(
     task
 ) {
@@ -523,6 +513,7 @@ export function addTask(
     );
 
 }
+
 
 
 export function updateTaskStatus(
@@ -568,6 +559,7 @@ export function updateTaskStatus(
 }
 
 
+
 /* ================================================= */
 /* EVENTS */
 /* ================================================= */
@@ -579,6 +571,7 @@ export function getEvents() {
     );
 
 }
+
 
 
 export function addEvent(
@@ -598,6 +591,7 @@ export function addEvent(
 }
 
 
+
 /* ================================================= */
 /* GRADES */
 /* ================================================= */
@@ -609,6 +603,7 @@ export function getGrades() {
     );
 
 }
+
 
 
 export function getGradesForCourse(
@@ -626,6 +621,7 @@ export function getGradesForCourse(
 }
 
 
+
 export function addGrade(
     grade
 ) {
@@ -641,6 +637,7 @@ export function addGrade(
     );
 
 }
+
 
 
 export function deleteGrade(
@@ -676,6 +673,7 @@ export function deleteGrade(
     );
 
 }
+
 
 
 /* ================================================= */
@@ -715,7 +713,8 @@ export function getCalendarItemsForDate(
                         event.date,
 
                     description:
-                        event.description,
+                        event.description ||
+                        "",
 
                     courseName:
                         "Personal / General"
