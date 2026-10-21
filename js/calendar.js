@@ -1,29 +1,30 @@
-/*
-    calendar.js
-
-    Renders the full calendar and dashboard
-    mini calendar from shared application data.
-*/
-
+/* calendar.js - full/mini calendar plus event creation */
 
 import {
-    getCalendarItemsForDate
+    getCalendarItemsForDate,
+    addEvent
 }
 from "./state.js";
 
 
 import {
-    monthNames,
-    createDateString
+    MONTH_NAMES,
+    createDateString,
+    createId,
+    cleanText,
+    cleanMultilineText,
+    isValidDateString
 }
 from "./utils.js";
 
 
 import {
-    openDetails
+    openDetails,
+    openModal,
+    closeModal,
+    showMessage
 }
-from "./details.js";
-
+from "./ui.js";
 
 
 let calendarDate =
@@ -32,71 +33,13 @@ let calendarDate =
 
 calendarDate =
     new Date(
-
         calendarDate.getFullYear(),
-
         calendarDate.getMonth(),
-
         1
-
     );
 
 
-
-export function getCalendarDate() {
-
-    return new Date(
-        calendarDate
-    );
-
-}
-
-
-
-export function setCalendarMonth(
-    year,
-    month
-) {
-
-    calendarDate =
-        new Date(
-            year,
-            month,
-            1
-        );
-
-
-    renderCalendars();
-
-}
-
-
-
-function isToday(
-    year,
-    month,
-    day
-) {
-
-    const today =
-        new Date();
-
-
-    return (
-
-        today.getFullYear() === year &&
-
-        today.getMonth() === month &&
-
-        today.getDate() === day
-
-    );
-
-}
-
-
-
-function getMonthInformation() {
+function getMonthInfo() {
 
     const year =
         calendarDate.getFullYear();
@@ -126,7 +69,7 @@ function getMonthInformation() {
                 0
             ).getDate(),
 
-        previousMonthDays:
+        previousDays:
             new Date(
                 year,
                 month,
@@ -138,33 +81,34 @@ function getMonthInformation() {
 }
 
 
-
-function getCalendarCellData(
+function getCell(
     index,
-    information
+    info
 ) {
+
+    let year =
+        info.year;
+
+
+    let month =
+        info.month;
+
 
     let day;
 
-    let month =
-        information.month;
 
-    let year =
-        information.year;
-
-    let outsideMonth =
+    let outside =
         false;
-
 
 
     if (
         index <
-        information.firstWeekday
+        info.firstWeekday
     ) {
 
         day =
-            information.previousMonthDays -
-            information.firstWeekday +
+            info.previousDays -
+            info.firstWeekday +
             index +
             1;
 
@@ -183,34 +127,30 @@ function getCalendarCellData(
         }
 
 
-        outsideMonth =
+        outside =
             true;
 
     }
 
-
     else if (
         index <
-        information.firstWeekday +
-        information.daysInMonth
+        info.firstWeekday +
+        info.daysInMonth
     ) {
 
         day =
             index -
-            information.firstWeekday +
+            info.firstWeekday +
             1;
 
     }
-
 
     else {
 
         day =
             index -
-            (
-                information.firstWeekday +
-                information.daysInMonth
-            ) +
+            info.firstWeekday -
+            info.daysInMonth +
             1;
 
 
@@ -228,27 +168,49 @@ function getCalendarCellData(
         }
 
 
-        outsideMonth =
+        outside =
             true;
 
     }
 
 
-
     return {
-
-        day,
-        month,
         year,
-        outsideMonth
-
+        month,
+        day,
+        outside
     };
 
 }
 
 
+function isToday(
+    year,
+    month,
+    day
+) {
 
-function createCalendarItemButton(
+    const today =
+        new Date();
+
+
+    return (
+
+        today.getFullYear() ===
+            year &&
+
+        today.getMonth() ===
+            month &&
+
+        today.getDate() ===
+            day
+
+    );
+
+}
+
+
+function createItemButton(
     item,
     mini = false
 ) {
@@ -263,49 +225,25 @@ function createCalendarItemButton(
         "button";
 
 
-    button.classList.add(
-        mini
-            ? "mini-event"
-            : "calendar-event"
-    );
+    button.className =
+        `${
+            mini
+                ? "mini-item"
+                : "calendar-item"
+        } ${
+            item.type === "assignment" ||
+            item.type === "exam"
+                ? item.type
+                : ""
+        }`;
 
-
-    if (
-        item.type ===
-        "assignment"
-    ) {
-
-        button.classList.add(
-            "assignment"
-        );
-
-    }
-
-
-    if (
-        item.type ===
-        "exam"
-    ) {
-
-        button.classList.add(
-            "exam"
-        );
-
-    }
-
-
-    /*
-        textContent is intentionally used here.
-        User-provided values are never inserted
-        directly as HTML.
-    */
 
     button.textContent =
-        item.topic;
+        item.title;
 
 
     button.title =
-        item.topic;
+        item.title;
 
 
     button.addEventListener(
@@ -328,7 +266,6 @@ function createCalendarItemButton(
 }
 
 
-
 function renderFullCalendar() {
 
     const grid =
@@ -337,22 +274,31 @@ function renderFullCalendar() {
         );
 
 
-    const title =
+    const heading =
         document.getElementById(
             "currentCalendarMonth"
         );
 
 
+    if (
+        !grid ||
+        !heading
+    ) {
+
+        return;
+
+    }
+
+
     grid.replaceChildren();
 
 
-    const information =
-        getMonthInformation();
+    const info =
+        getMonthInfo();
 
 
-    title.textContent =
-        `${monthNames[information.month]} ${information.year}`;
-
+    heading.textContent =
+        `${MONTH_NAMES[info.month]} ${info.year}`;
 
 
     for (
@@ -362,47 +308,32 @@ function renderFullCalendar() {
     ) {
 
         const cell =
-            getCalendarCellData(
+            getCell(
                 index,
-                information
+                info
             );
 
 
-        const dayElement =
+        const day =
             document.createElement(
                 "div"
             );
 
 
-        dayElement.classList.add(
-            "calendar-day"
-        );
-
-
-        if (
-            cell.outsideMonth
-        ) {
-
-            dayElement.classList.add(
-                "outside-month"
-            );
-
-        }
-
-
-        if (
-            isToday(
-                cell.year,
-                cell.month,
-                cell.day
-            )
-        ) {
-
-            dayElement.classList.add(
-                "today"
-            );
-
-        }
+        day.className =
+            `calendar-day${
+                cell.outside
+                    ? " outside"
+                    : ""
+            }${
+                isToday(
+                    cell.year,
+                    cell.month,
+                    cell.day
+                )
+                    ? " today"
+                    : ""
+            }`;
 
 
         const number =
@@ -411,43 +342,34 @@ function renderFullCalendar() {
             );
 
 
-        number.classList.add(
-            "calendar-date-number"
-        );
+        number.className =
+            "calendar-number";
 
 
         number.textContent =
             cell.day;
 
 
-        dayElement.appendChild(
+        day.appendChild(
             number
         );
 
 
-        const dateString =
-            createDateString(
-
-                cell.year,
-
-                cell.month,
-
-                cell.day
-
-            );
-
-
         const items =
             getCalendarItemsForDate(
-                dateString
+                createDateString(
+                    cell.year,
+                    cell.month,
+                    cell.day
+                )
             );
 
 
         items.forEach(
             item => {
 
-                dayElement.appendChild(
-                    createCalendarItemButton(
+                day.appendChild(
+                    createItemButton(
                         item
                     )
                 );
@@ -457,13 +379,12 @@ function renderFullCalendar() {
 
 
         grid.appendChild(
-            dayElement
+            day
         );
 
     }
 
 }
-
 
 
 function renderMiniCalendar() {
@@ -474,22 +395,31 @@ function renderMiniCalendar() {
         );
 
 
-    const title =
+    const heading =
         document.getElementById(
             "miniCalendarMonth"
         );
 
 
+    if (
+        !grid ||
+        !heading
+    ) {
+
+        return;
+
+    }
+
+
     grid.replaceChildren();
 
 
-    const information =
-        getMonthInformation();
+    const info =
+        getMonthInfo();
 
 
-    title.textContent =
-        `${monthNames[information.month]} ${information.year}`;
-
+    heading.textContent =
+        `${MONTH_NAMES[info.month]} ${info.year}`;
 
 
     for (
@@ -499,47 +429,32 @@ function renderMiniCalendar() {
     ) {
 
         const cell =
-            getCalendarCellData(
+            getCell(
                 index,
-                information
+                info
             );
 
 
-        const dayElement =
+        const day =
             document.createElement(
                 "div"
             );
 
 
-        dayElement.classList.add(
-            "mini-date"
-        );
-
-
-        if (
-            cell.outsideMonth
-        ) {
-
-            dayElement.classList.add(
-                "outside-month"
-            );
-
-        }
-
-
-        if (
-            isToday(
-                cell.year,
-                cell.month,
-                cell.day
-            )
-        ) {
-
-            dayElement.classList.add(
-                "today"
-            );
-
-        }
+        day.className =
+            `mini-day${
+                cell.outside
+                    ? " outside"
+                    : ""
+            }${
+                isToday(
+                    cell.year,
+                    cell.month,
+                    cell.day
+                )
+                    ? " today"
+                    : ""
+            }`;
 
 
         const number =
@@ -548,39 +463,26 @@ function renderMiniCalendar() {
             );
 
 
-        number.classList.add(
-            "mini-date-number"
-        );
+        number.className =
+            "mini-number";
 
 
         number.textContent =
             cell.day;
 
 
-        dayElement.appendChild(
+        day.appendChild(
             number
         );
 
 
-        const dateString =
+        getCalendarItemsForDate(
             createDateString(
-
                 cell.year,
-
                 cell.month,
-
                 cell.day
-
-            );
-
-
-        const items =
-            getCalendarItemsForDate(
-                dateString
-            );
-
-
-        items
+            )
+        )
             .slice(
                 0,
                 2
@@ -588,8 +490,8 @@ function renderMiniCalendar() {
             .forEach(
                 item => {
 
-                    dayElement.appendChild(
-                        createCalendarItemButton(
+                    day.appendChild(
+                        createItemButton(
                             item,
                             true
                         )
@@ -599,34 +501,8 @@ function renderMiniCalendar() {
             );
 
 
-        if (
-            items.length > 2
-        ) {
-
-            const more =
-                document.createElement(
-                    "span"
-                );
-
-
-            more.classList.add(
-                "mini-more-events"
-            );
-
-
-            more.textContent =
-                `+${items.length - 2} more`;
-
-
-            dayElement.appendChild(
-                more
-            );
-
-        }
-
-
         grid.appendChild(
-            dayElement
+            day
         );
 
     }
@@ -634,8 +510,7 @@ function renderMiniCalendar() {
 }
 
 
-
-export function renderCalendars() {
+export function renderCalendar() {
 
     renderFullCalendar();
 
@@ -644,54 +519,214 @@ export function renderCalendars() {
 }
 
 
+export function setupCalendar(
+    refreshApplication
+) {
 
-export function setupCalendarControls() {
+    document
+        .getElementById(
+            "previousMonthButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
 
-    document.getElementById(
-        "previousMonthButton"
-    ).addEventListener(
-        "click",
-        () => {
+                calendarDate =
+                    new Date(
+                        calendarDate.getFullYear(),
+                        calendarDate.getMonth() - 1,
+                        1
+                    );
 
-            calendarDate =
-                new Date(
 
-                    calendarDate.getFullYear(),
+                renderCalendar();
 
-                    calendarDate.getMonth() - 1,
+            }
+        );
 
-                    1
 
+    document
+        .getElementById(
+            "nextMonthButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                calendarDate =
+                    new Date(
+                        calendarDate.getFullYear(),
+                        calendarDate.getMonth() + 1,
+                        1
+                    );
+
+
+                renderCalendar();
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "openEventModalButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                const input =
+                    document.getElementById(
+                        "eventDate"
+                    );
+
+
+                if (input) {
+
+                    const today =
+                        new Date();
+
+
+                    input.value =
+                        createDateString(
+                            today.getFullYear(),
+                            today.getMonth(),
+                            today.getDate()
+                        );
+
+                }
+
+
+                openModal(
+                    "eventModal"
+                );
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "eventForm"
+        )
+        ?.addEventListener(
+            "submit",
+            event => {
+
+                event.preventDefault();
+
+
+                const topic =
+                    cleanText(
+                        document.getElementById(
+                            "eventTopic"
+                        )?.value,
+                        60
+                    );
+
+
+                const date =
+                    document.getElementById(
+                        "eventDate"
+                    )?.value || "";
+
+
+                const description =
+                    cleanMultilineText(
+                        document.getElementById(
+                            "eventDescription"
+                        )?.value,
+                        500
+                    );
+
+
+                if (!topic) {
+
+                    return showMessage(
+                        "Event topic is required.",
+                        "error"
+                    );
+
+                }
+
+
+                if (
+                    !isValidDateString(
+                        date
+                    )
+                ) {
+
+                    return showMessage(
+                        "Choose a valid event date.",
+                        "error"
+                    );
+
+                }
+
+
+                if (!description) {
+
+                    return showMessage(
+                        "Event description is required.",
+                        "error"
+                    );
+
+                }
+
+
+                addEvent({
+
+                    id:
+                        createId(
+                            "event"
+                        ),
+
+                    topic,
+
+                    date,
+
+                    description
+
+                });
+
+
+                document
+                    .getElementById(
+                        "eventForm"
+                    )
+                    .reset();
+
+
+                closeModal(
+                    "eventModal"
                 );
 
 
-            renderCalendars();
+                const [
+                    year,
+                    month
+                ] =
+                    date
+                        .split("-")
+                        .map(Number);
 
-        }
-    );
+
+                calendarDate =
+                    new Date(
+                        year,
+                        month - 1,
+                        1
+                    );
 
 
-    document.getElementById(
-        "nextMonthButton"
-    ).addEventListener(
-        "click",
-        () => {
+                refreshApplication();
 
-            calendarDate =
-                new Date(
 
-                    calendarDate.getFullYear(),
-
-                    calendarDate.getMonth() + 1,
-
-                    1
-
+                showMessage(
+                    "Event created."
                 );
 
-
-            renderCalendars();
-
-        }
-    );
+            }
+        );
 
 }
