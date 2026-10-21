@@ -1,12 +1,4 @@
-/*
-    state.js
-
-    Central data layer for CampusFlow.
-
-    UI modules use this file instead of
-    accessing localStorage directly.
-*/
-
+/* state.js - central application data layer */
 
 import {
     loadData,
@@ -16,38 +8,54 @@ from "./storage.js";
 
 
 import {
-    VALID_PRIORITIES,
-    VALID_STATUSES,
-    VALID_TASK_TYPES,
-    VALID_COURSE_SCHEDULES,
     isValidDateString
 }
-from "./validation.js";
+from "./utils.js";
 
 
+const KEYS = {
 
-const COURSE_KEY =
-    "campusflow-sprint1-courses-v1";
+    role:
+        "campusflow-v2-role",
+
+    courses:
+        "campusflow-v2-courses",
+
+    tasks:
+        "campusflow-v2-tasks",
+
+    events:
+        "campusflow-v2-events",
+
+    grades:
+        "campusflow-v2-grades"
+
+};
 
 
-const TASK_KEY =
-    "campusflow-sprint1-tasks-v1";
-
-
-const EVENT_KEY =
-    "campusflow-sprint1-events-v1";
-
-
-const ROLE_KEY =
-    "campusflow-active-role-v1";
-
-
-
-const VALID_ROLES = [
-    "student",
-    "professor"
+export const GRADE_CATEGORIES = [
+    "Homework",
+    "Quiz",
+    "Exam",
+    "Project",
+    "Lab",
+    "Participation",
+    "Other"
 ];
 
+
+export const TASK_STATUSES = [
+    "Not Started",
+    "In Progress",
+    "Completed"
+];
+
+
+export const TASK_PRIORITIES = [
+    "Low",
+    "Medium",
+    "High"
+];
 
 
 const defaultCourses = [
@@ -82,19 +90,18 @@ const defaultCourses = [
 ];
 
 
-
 const defaultTasks = [
 
     {
         id: "task-1",
         type: "assignment",
-        title: "Database Homework 4",
+        title: "Database Homework",
         courseId: "course-1",
-        dueDate: "2026-09-26",
+        dueDate: "2026-10-21",
         priority: "High",
         status: "In Progress",
         description:
-            "Complete Database Homework 4 before the deadline."
+            "Complete the current database homework."
     },
 
     {
@@ -102,27 +109,26 @@ const defaultTasks = [
         type: "exam",
         title: "Database Exam",
         courseId: "course-1",
-        dueDate: "2026-09-29",
+        dueDate: "2026-10-24",
         priority: "High",
         status: "Not Started",
         description:
-            "Review ER diagrams, relational mapping, and database concepts."
+            "Review relational design and SQL concepts."
     },
 
     {
         id: "task-3",
         type: "assignment",
-        title: "CampusFlow Sprint 1",
+        title: "CampusFlow Sprint 2",
         courseId: "course-2",
-        dueDate: "2026-10-02",
+        dueDate: "2026-10-28",
         priority: "High",
         status: "In Progress",
         description:
-            "Complete and test the Sprint 1 CampusFlow prototype."
+            "Complete Sprint 2 CampusFlow features."
     }
 
 ];
-
 
 
 const defaultEvents = [
@@ -130,20 +136,19 @@ const defaultEvents = [
     {
         id: "event-1",
         topic: "Study Session",
-        date: "2026-09-27",
+        date: "2026-10-22",
         description:
-            "Review class material and upcoming assignments."
+            "Review upcoming coursework."
     }
 
 ];
 
 
-
-function cloneCollection(
-    collection
+function copy(
+    items
 ) {
 
-    return collection.map(
+    return items.map(
         item => ({
             ...item
         })
@@ -152,109 +157,142 @@ function cloneCollection(
 }
 
 
-
-function isValidCourseRecord(
+function validCourse(
     course
 ) {
 
-    return (
+    return Boolean(
 
-        course !== null &&
+        course &&
 
-        typeof course === "object" &&
+        typeof course.id ===
+            "string" &&
 
-        typeof course.id === "string" &&
+        typeof course.code ===
+            "string" &&
 
-        typeof course.code === "string" &&
-
-        typeof course.name === "string" &&
+        typeof course.name ===
+            "string" &&
 
         typeof course.instructor ===
             "string" &&
 
-        VALID_COURSE_SCHEDULES.includes(
-            course.days
-        ) &&
+        typeof course.days ===
+            "string" &&
 
-        typeof course.time === "string"
+        typeof course.time ===
+            "string"
 
     );
 
 }
 
 
-
-function isValidTaskRecord(
+function validTask(
     task
 ) {
 
-    return (
+    return Boolean(
 
-        task !== null &&
+        task &&
 
-        typeof task === "object" &&
-
-        typeof task.id === "string" &&
-
-        VALID_TASK_TYPES.includes(
+        [
+            "assignment",
+            "exam"
+        ].includes(
             task.type
         ) &&
 
-        typeof task.title === "string" &&
+        typeof task.id ===
+            "string" &&
 
-        typeof task.courseId === "string" &&
+        typeof task.title ===
+            "string" &&
+
+        typeof task.courseId ===
+            "string" &&
 
         isValidDateString(
             task.dueDate
         ) &&
 
-        VALID_PRIORITIES.includes(
+        TASK_PRIORITIES.includes(
             task.priority
         ) &&
 
-        VALID_STATUSES.includes(
+        TASK_STATUSES.includes(
             task.status
-        ) &&
-
-        typeof task.description ===
-            "string"
+        )
 
     );
 
 }
 
 
-
-function isValidEventRecord(
+function validEvent(
     event
 ) {
 
-    return (
+    return Boolean(
 
-        event !== null &&
+        event &&
 
-        typeof event === "object" &&
+        typeof event.id ===
+            "string" &&
 
-        typeof event.id === "string" &&
-
-        typeof event.topic === "string" &&
+        typeof event.topic ===
+            "string" &&
 
         isValidDateString(
             event.date
-        ) &&
-
-        typeof event.description ===
-            "string"
+        )
 
     );
 
 }
 
 
+function validGrade(
+    grade
+) {
 
-function loadSafeCollection(
+    return Boolean(
+
+        grade &&
+
+        typeof grade.id ===
+            "string" &&
+
+        typeof grade.courseId ===
+            "string" &&
+
+        typeof grade.title ===
+            "string" &&
+
+        GRADE_CATEGORIES.includes(
+            grade.category
+        ) &&
+
+        Number.isFinite(
+            grade.pointsEarned
+        ) &&
+
+        grade.pointsEarned >= 0 &&
+
+        Number.isFinite(
+            grade.pointsPossible
+        ) &&
+
+        grade.pointsPossible > 0
+
+    );
+
+}
+
+
+function loadCollection(
     key,
-    defaults,
+    fallback,
     validator
 ) {
 
@@ -271,84 +309,32 @@ function loadSafeCollection(
         )
     ) {
 
-        return cloneCollection(
-            defaults
+        return copy(
+            fallback
         );
 
     }
 
 
-    const validItems =
-        loaded.filter(
-            validator
-        );
-
-
-    if (
-        validItems.length !==
-        loaded.length
-    ) {
-
-        console.warn(
-            `${key} contained invalid records.`
-        );
-
-    }
-
-
-    return validItems;
+    return loaded.filter(
+        validator
+    );
 
 }
-
-
-
-let courses =
-    loadSafeCollection(
-        COURSE_KEY,
-        defaultCourses,
-        isValidCourseRecord
-    );
-
-
-let tasks =
-    loadSafeCollection(
-        TASK_KEY,
-        defaultTasks,
-        isValidTaskRecord
-    );
-
-
-let events =
-    loadSafeCollection(
-        EVENT_KEY,
-        defaultEvents,
-        isValidEventRecord
-    );
 
 
 let activeRole =
     loadData(
-        ROLE_KEY,
+        KEYS.role,
         "student"
     );
 
 
-
 if (
-    courses.length === 0
-) {
-
-    courses =
-        cloneCollection(
-            defaultCourses
-        );
-
-}
-
-
-
-if (
-    !VALID_ROLES.includes(
+    ![
+        "student",
+        "professor"
+    ].includes(
         activeRole
     )
 ) {
@@ -359,9 +345,52 @@ if (
 }
 
 
+let courses =
+    loadCollection(
+        KEYS.courses,
+        defaultCourses,
+        validCourse
+    );
+
+
+if (
+    courses.length === 0
+) {
+
+    courses =
+        copy(
+            defaultCourses
+        );
+
+}
+
+
+let tasks =
+    loadCollection(
+        KEYS.tasks,
+        defaultTasks,
+        validTask
+    );
+
+
+let events =
+    loadCollection(
+        KEYS.events,
+        defaultEvents,
+        validEvent
+    );
+
+
+let grades =
+    loadCollection(
+        KEYS.grades,
+        [],
+        validGrade
+    );
+
 
 /* ================================================= */
-/* ROLE STATE */
+/* ROLE */
 /* ================================================= */
 
 export function getActiveRole() {
@@ -371,13 +400,15 @@ export function getActiveRole() {
 }
 
 
-
 export function setActiveRole(
     role
 ) {
 
     if (
-        !VALID_ROLES.includes(
+        ![
+            "student",
+            "professor"
+        ].includes(
             role
         )
     ) {
@@ -392,12 +423,11 @@ export function setActiveRole(
 
 
     return saveData(
-        ROLE_KEY,
-        activeRole
+        KEYS.role,
+        role
     );
 
 }
-
 
 
 /* ================================================= */
@@ -406,24 +436,21 @@ export function setActiveRole(
 
 export function getCourses() {
 
-    return courses.map(
-        course => ({
-            ...course
-        })
+    return copy(
+        courses
     );
 
 }
 
 
-
 export function getCourseById(
-    courseId
+    id
 ) {
 
     const course =
         courses.find(
             item =>
-                item.id === courseId
+                item.id === id
         );
 
 
@@ -436,7 +463,6 @@ export function getCourseById(
 }
 
 
-
 export function addCourse(
     course
 ) {
@@ -447,12 +473,11 @@ export function addCourse(
 
 
     return saveData(
-        COURSE_KEY,
+        KEYS.courses,
         courses
     );
 
 }
-
 
 
 /* ================================================= */
@@ -461,35 +486,26 @@ export function addCourse(
 
 export function getTasks() {
 
-    return tasks.map(
-        task => ({
-            ...task
-        })
+    return copy(
+        tasks
     );
 
 }
 
 
-
-export function getTaskById(
-    taskId
+export function getTasksForCourse(
+    courseId
 ) {
 
-    const task =
-        tasks.find(
-            item =>
-                item.id === taskId
-        );
-
-
-    return task
-        ? {
-            ...task
-        }
-        : null;
+    return copy(
+        tasks.filter(
+            task =>
+                task.courseId ===
+                courseId
+        )
+    );
 
 }
-
 
 
 export function addTask(
@@ -502,22 +518,21 @@ export function addTask(
 
 
     return saveData(
-        TASK_KEY,
+        KEYS.tasks,
         tasks
     );
 
 }
 
 
-
 export function updateTaskStatus(
     taskId,
-    newStatus
+    status
 ) {
 
     if (
-        !VALID_STATUSES.includes(
-            newStatus
+        !TASK_STATUSES.includes(
+            status
         )
     ) {
 
@@ -529,7 +544,8 @@ export function updateTaskStatus(
     const task =
         tasks.find(
             item =>
-                item.id === taskId
+                item.id ===
+                taskId
         );
 
 
@@ -541,39 +557,15 @@ export function updateTaskStatus(
 
 
     task.status =
-        newStatus;
+        status;
 
 
-    saveData(
-        TASK_KEY,
+    return saveData(
+        KEYS.tasks,
         tasks
     );
 
-
-    return true;
-
 }
-
-
-
-export function getTasksForCourse(
-    courseId
-) {
-
-    return tasks
-        .filter(
-            task =>
-                task.courseId ===
-                courseId
-        )
-        .map(
-            task => ({
-                ...task
-            })
-        );
-
-}
-
 
 
 /* ================================================= */
@@ -582,35 +574,11 @@ export function getTasksForCourse(
 
 export function getEvents() {
 
-    return events.map(
-        event => ({
-            ...event
-        })
+    return copy(
+        events
     );
 
 }
-
-
-
-export function getEventById(
-    eventId
-) {
-
-    const event =
-        events.find(
-            item =>
-                item.id === eventId
-        );
-
-
-    return event
-        ? {
-            ...event
-        }
-        : null;
-
-}
-
 
 
 export function addEvent(
@@ -623,12 +591,91 @@ export function addEvent(
 
 
     return saveData(
-        EVENT_KEY,
+        KEYS.events,
         events
     );
 
 }
 
+
+/* ================================================= */
+/* GRADES */
+/* ================================================= */
+
+export function getGrades() {
+
+    return copy(
+        grades
+    );
+
+}
+
+
+export function getGradesForCourse(
+    courseId
+) {
+
+    return copy(
+        grades.filter(
+            grade =>
+                grade.courseId ===
+                courseId
+        )
+    );
+
+}
+
+
+export function addGrade(
+    grade
+) {
+
+    grades.push({
+        ...grade
+    });
+
+
+    return saveData(
+        KEYS.grades,
+        grades
+    );
+
+}
+
+
+export function deleteGrade(
+    gradeId
+) {
+
+    const index =
+        grades.findIndex(
+            grade =>
+                grade.id ===
+                gradeId
+        );
+
+
+    if (
+        index < 0
+    ) {
+
+        return false;
+
+    }
+
+
+    grades.splice(
+        index,
+        1
+    );
+
+
+    return saveData(
+        KEYS.grades,
+        grades
+    );
+
+}
 
 
 /* ================================================= */
@@ -661,18 +708,20 @@ export function getCalendarItemsForDate(
                     topic:
                         event.topic,
 
-                    description:
-                        event.description,
+                    title:
+                        event.topic,
 
                     date:
                         event.date,
+
+                    description:
+                        event.description,
 
                     courseName:
                         "Personal / General"
 
                 })
             );
-
 
 
     const taskItems =
@@ -707,17 +756,14 @@ export function getCalendarItemsForDate(
                         topic:
                             task.title,
 
-                        description:
-                            task.description,
+                        title:
+                            task.title,
 
                         date:
                             task.dueDate,
 
-                        priority:
-                            task.priority,
-
-                        status:
-                            task.status,
+                        description:
+                            `${task.description || "No description provided."}\n\nPriority: ${task.priority}\nStatus: ${task.status}`,
 
                         courseName:
                             course
