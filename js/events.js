@@ -1,16 +1,28 @@
 /*
     events.js
 
-    Handles creating calendar events.
+    PURPOSE:
+    Controls creation of personal/general calendar events.
+
+    Responsibilities:
+    - Open Create Event modal
+    - Choose a default date
+    - Validate input
+    - Save event to state
+    - Move calendar to event month
+    - Refresh application
+    - Open newly created event details
 */
 
 
+/* Add event to central state */
 import {
     addEvent
 }
 from "./state.js";
 
 
+/* ID and date helpers */
 import {
     createDateString,
     createId
@@ -18,6 +30,7 @@ import {
 from "./utils.js";
 
 
+/* Input cleaning and validation */
 import {
     cleanText,
     cleanMultilineText,
@@ -26,6 +39,7 @@ import {
 from "./validation.js";
 
 
+/* Calendar controls */
 import {
     getCalendarDate,
     setCalendarMonth
@@ -33,18 +47,24 @@ import {
 from "./calendar.js";
 
 
+/* Shared details window */
 import {
     openDetails
 }
 from "./details.js";
 
 
+/* User feedback messages */
 import {
     showMessage
 }
 from "./feedback.js";
 
 
+
+/* ================================================= */
+/* OPEN EVENT MODAL */
+/* ================================================= */
 
 function openEventModal() {
 
@@ -54,6 +74,9 @@ function openEventModal() {
         );
 
 
+    /*
+        Determine which month is currently being viewed.
+    */
     const viewedDate =
         getCalendarDate();
 
@@ -62,10 +85,18 @@ function openEventModal() {
         new Date();
 
 
+    /*
+        Default to day 1 when looking at a month
+        other than the current real month.
+    */
     let day =
         1;
 
 
+    /*
+        If the user is viewing the current month,
+        default the form to today's date.
+    */
     if (
 
         today.getFullYear() ===
@@ -82,6 +113,9 @@ function openEventModal() {
     }
 
 
+    /*
+        Set the date input before showing modal.
+    */
     document.getElementById(
         "eventDate"
     ).value =
@@ -96,6 +130,9 @@ function openEventModal() {
         );
 
 
+    /*
+        Display modal.
+    */
     modal.classList.add(
         "show"
     );
@@ -107,6 +144,9 @@ function openEventModal() {
     );
 
 
+    /*
+        Place cursor directly in Event Topic.
+    */
     document.getElementById(
         "eventTopic"
     ).focus();
@@ -114,6 +154,10 @@ function openEventModal() {
 }
 
 
+
+/* ================================================= */
+/* CLOSE EVENT MODAL */
+/* ================================================= */
 
 function closeEventModal() {
 
@@ -134,6 +178,9 @@ function closeEventModal() {
     );
 
 
+    /*
+        Clear previous form values.
+    */
     document.getElementById(
         "eventForm"
     ).reset();
@@ -142,6 +189,16 @@ function closeEventModal() {
 
 
 
+/* ================================================= */
+/* EVENT SYSTEM SETUP */
+/* ================================================= */
+
+/*
+    refreshApplication is passed from app.js.
+
+    This allows events.js to request a complete refresh
+    without needing to import every other feature module.
+*/
 export function setupEventSystem(
     refreshApplication
 ) {
@@ -152,6 +209,7 @@ export function setupEventSystem(
         );
 
 
+    /* Open modal */
     document.getElementById(
         "openEventModalButton"
     ).addEventListener(
@@ -160,6 +218,7 @@ export function setupEventSystem(
     );
 
 
+    /* X close button */
     document.getElementById(
         "closeEventModalButton"
     ).addEventListener(
@@ -168,6 +227,7 @@ export function setupEventSystem(
     );
 
 
+    /* Cancel button */
     document.getElementById(
         "cancelEventButton"
     ).addEventListener(
@@ -176,15 +236,27 @@ export function setupEventSystem(
     );
 
 
+    /* ================================================= */
+    /* CREATE EVENT */
+    /* ================================================= */
+
     document.getElementById(
         "eventForm"
     ).addEventListener(
         "submit",
         event => {
 
+            /*
+                Prevent browser page refresh.
+            */
             event.preventDefault();
 
 
+            /*
+                Build event object from form input.
+
+                Input is cleaned before validation/storage.
+            */
             const newEvent = {
 
                 id:
@@ -216,12 +288,18 @@ export function setupEventSystem(
             };
 
 
+            /*
+                Run centralized event validation.
+            */
             const errors =
                 validateEvent(
                     newEvent
                 );
 
 
+            /*
+                Show first error and stop if invalid.
+            */
             if (
                 errors.length > 0
             ) {
@@ -237,12 +315,18 @@ export function setupEventSystem(
             }
 
 
+            /*
+                Add event to central state and localStorage.
+            */
             const persisted =
                 addEvent(
                     newEvent
                 );
 
 
+            /*
+                Extract year/month from event date.
+            */
             const [
                 year,
                 month
@@ -252,18 +336,31 @@ export function setupEventSystem(
                     .map(Number);
 
 
+            /*
+                Move calendar to the newly created
+                event's month.
+            */
             setCalendarMonth(
                 year,
                 month - 1
             );
 
 
+            /*
+                Close creation form.
+            */
             closeEventModal();
 
 
+            /*
+                Refresh dashboards, calendar, etc.
+            */
             refreshApplication();
 
 
+            /*
+                Tell user whether browser persistence worked.
+            */
             showMessage(
                 persisted
                     ? "Event created."
@@ -274,6 +371,9 @@ export function setupEventSystem(
             );
 
 
+            /*
+                Immediately show the created event.
+            */
             openDetails({
 
                 id:
@@ -303,6 +403,10 @@ export function setupEventSystem(
     );
 
 
+    /* ================================================= */
+    /* BACKGROUND CLICK CLOSE */
+    /* ================================================= */
+
     modal.addEventListener(
         "click",
         event => {
@@ -318,6 +422,10 @@ export function setupEventSystem(
         }
     );
 
+
+    /* ================================================= */
+    /* ESCAPE KEY CLOSE */
+    /* ================================================= */
 
     document.addEventListener(
         "keydown",
