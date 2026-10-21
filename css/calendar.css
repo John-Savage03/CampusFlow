@@ -1,0 +1,493 @@
+/*
+    calendar.css
+
+    Contains all styles specific to:
+    - Dashboard mini calendar
+    - Full Unified Calendar
+    - Calendar event colors
+    - Calendar navigation
+*/
+
+
+/* ================================================= */
+/* MINI CALENDAR */
+/* ================================================= */
+
+/*
+    The entire mini calendar acts as a shortcut
+    to the full Calendar page.
+*/
+.mini-calendar-panel {
+    cursor: pointer;
+
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s;
+}
+
+
+/* Slight visual feedback on hover */
+.mini-calendar-panel:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 6px 15px
+        rgba(0, 0, 0, 0.08);
+}
+
+
+/* Month/year below Calendar heading */
+.mini-calendar-subtitle {
+    margin-top: 4px;
+
+    color: #6b7280;
+
+    font-size: 13px;
+}
+
+
+/* Seven weekday headings */
+.mini-calendar-weekdays {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    margin-bottom: 5px;
+}
+
+
+.mini-calendar-weekdays div {
+    padding: 5px;
+
+    color: #6b7280;
+
+    text-align: center;
+
+    font-size: 12px;
+
+    font-weight: bold;
+}
+
+
+/*
+    Calendar always displays six weeks,
+    giving calendar.js 42 total cells.
+*/
+.mini-calendar {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    gap: 6px;
+}
+
+
+/* Individual mini calendar date */
+.mini-date {
+    min-height: 80px;
+
+    padding: 6px;
+
+    overflow: hidden;
+
+    border: 1px solid transparent;
+
+    border-radius: 7px;
+
+    font-size: 12px;
+}
+
+
+.mini-date:hover {
+    background: #f9fafb;
+
+    border-color: #e5e7eb;
+}
+
+
+/*
+    Dates from the previous or following month
+    appear faded.
+*/
+.mini-date.outside-month {
+    background: #fafafa;
+
+    color: #c5c7cc;
+}
+
+
+/* Today's date gets a blue border */
+.mini-date.today {
+    border: 2px solid #2563eb;
+}
+
+
+/* Number displayed inside the date cell */
+.mini-date-number {
+    display: block;
+
+    margin-bottom: 4px;
+
+    font-weight: bold;
+}
+
+
+/* ================================================= */
+/* MINI CALENDAR ITEMS */
+/* ================================================= */
+
+/*
+    Default calendar event is blue.
+*/
+.mini-event {
+    display: block;
+
+    width: 100%;
+
+    margin-top: 3px;
+
+    padding: 3px 4px;
+
+    border: none;
+
+    border-radius: 4px;
+
+    background: #dbeafe;
+
+    color: #1d4ed8;
+
+    text-align: left;
+
+    font-size: 9px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    cursor: pointer;
+}
+
+
+/* Assignments use red */
+.mini-event.assignment {
+    background: #fee2e2;
+
+    color: #b91c1c;
+}
+
+
+/* Exams use yellow */
+.mini-event.exam {
+    background: #fef3c7;
+
+    color: #92400e;
+}
+
+
+/*
+    If more than two items exist for a date,
+    calendar.js displays "+N more".
+*/
+.mini-more-events {
+    display: block;
+
+    margin-top: 3px;
+
+    color: #6b7280;
+
+    font-size: 9px;
+}
+
+
+/* ================================================= */
+/* CALENDAR KEY */
+/* ================================================= */
+
+/* Legend below mini calendar */
+.mini-calendar-key {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 20px;
+
+    margin-top: 18px;
+
+    color: #6b7280;
+
+    font-size: 12px;
+}
+
+
+/* Small legend circles */
+.calendar-dot {
+    display: inline-block;
+
+    width: 7px;
+    height: 7px;
+
+    margin-right: 5px;
+
+    border-radius: 50%;
+}
+
+
+/* Event legend color */
+.event-dot {
+    background: #2563eb;
+}
+
+
+/* Assignment legend color */
+.assignment-dot {
+    background: #dc2626;
+}
+
+
+/* Exam legend color */
+.exam-dot {
+    background: #d97706;
+}
+
+
+/* ================================================= */
+/* FULL CALENDAR CONTROLS */
+/* ================================================= */
+
+/*
+    Contains:
+    - Previous month arrow
+    - Current month/year
+    - Next month arrow
+*/
+.calendar-controls {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 15px;
+
+    background: white;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 10px 10px 0 0;
+}
+
+
+/* Previous / Next buttons */
+.calendar-arrow {
+    padding: 8px 14px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 6px;
+
+    background: white;
+
+    font-size: 18px;
+
+    cursor: pointer;
+}
+
+
+.calendar-arrow:hover {
+    background: #f3f4f6;
+}
+
+
+/* ================================================= */
+/* FULL CALENDAR WEEKDAY HEADER */
+/* ================================================= */
+
+.calendar-weekdays {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    background: #f3f4f6;
+
+    border-left: 1px solid #ddd;
+}
+
+
+.calendar-weekdays div {
+    padding: 12px 5px;
+
+    border-right: 1px solid #ddd;
+
+    border-bottom: 1px solid #ddd;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    font-weight: bold;
+}
+
+
+/* ================================================= */
+/* FULL CALENDAR GRID */
+/* ================================================= */
+
+/*
+    Seven columns represent Sunday-Saturday.
+*/
+.calendar {
+    display: grid;
+
+    grid-template-columns:
+        repeat(7, 1fr);
+
+    background: white;
+
+    border-left: 1px solid #ddd;
+}
+
+
+/* Individual date cell */
+.calendar-day {
+    min-height: 145px;
+
+    padding: 9px;
+
+    overflow: hidden;
+
+    border-right: 1px solid #ddd;
+
+    border-bottom: 1px solid #ddd;
+}
+
+
+/* Previous/next month cells */
+.calendar-day.outside-month {
+    background: #fafafa;
+
+    color: #b7b7b7;
+}
+
+
+/* Today's cell */
+.calendar-day.today {
+    background: #eff6ff;
+}
+
+
+/* Date number */
+.calendar-date-number {
+    display: inline-flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    width: 28px;
+    height: 28px;
+
+    border-radius: 50%;
+
+    font-weight: bold;
+}
+
+
+/* Today's number gets a blue circle */
+.calendar-day.today
+.calendar-date-number {
+    background: #2563eb;
+
+    color: white;
+}
+
+
+/* ================================================= */
+/* FULL CALENDAR ITEMS */
+/* ================================================= */
+
+/*
+    Personal/general events use the default blue style.
+*/
+.calendar-event {
+    display: block;
+
+    width: 100%;
+
+    margin-top: 6px;
+
+    padding: 6px;
+
+    border: none;
+
+    border-radius: 4px;
+
+    background: #dbeafe;
+
+    color: #1d4ed8;
+
+    text-align: left;
+
+    font-size: 11px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    cursor: pointer;
+}
+
+
+.calendar-event:hover {
+    filter: brightness(0.96);
+}
+
+
+/* Assignment calendar entry */
+.calendar-event.assignment {
+    background: #fee2e2;
+
+    color: #b91c1c;
+}
+
+
+/* Exam calendar entry */
+.calendar-event.exam {
+    background: #fef3c7;
+
+    color: #92400e;
+}
+
+
+/* ================================================= */
+/* RESPONSIVE CALENDAR */
+/* ================================================= */
+
+/*
+    Reduce cell size on narrower displays.
+*/
+@media (max-width: 800px) {
+
+    .calendar-day {
+        min-height: 100px;
+
+        padding: 5px;
+    }
+
+
+    .calendar-event {
+        font-size: 9px;
+    }
+
+
+    .mini-date {
+        min-height: 60px;
+    }
+
+}
