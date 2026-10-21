@@ -1,415 +1,732 @@
-/* ================================================= */
-/* MINI CALENDAR */
-/* ================================================= */
+/* calendar.js - full/mini calendar plus event creation */
 
-.mini-calendar-panel {
-    cursor: pointer;
+import {
+    getCalendarItemsForDate,
+    addEvent
+}
+from "./state.js";
 
-    transition:
-        transform 0.2s,
-        box-shadow 0.2s;
+
+import {
+    MONTH_NAMES,
+    createDateString,
+    createId,
+    cleanText,
+    cleanMultilineText,
+    isValidDateString
+}
+from "./utils.js";
+
+
+import {
+    openDetails,
+    openModal,
+    closeModal,
+    showMessage
+}
+from "./ui.js";
+
+
+let calendarDate =
+    new Date();
+
+
+calendarDate =
+    new Date(
+        calendarDate.getFullYear(),
+        calendarDate.getMonth(),
+        1
+    );
+
+
+function getMonthInfo() {
+
+    const year =
+        calendarDate.getFullYear();
+
+
+    const month =
+        calendarDate.getMonth();
+
+
+    return {
+
+        year,
+
+        month,
+
+        firstWeekday:
+            new Date(
+                year,
+                month,
+                1
+            ).getDay(),
+
+        daysInMonth:
+            new Date(
+                year,
+                month + 1,
+                0
+            ).getDate(),
+
+        previousDays:
+            new Date(
+                year,
+                month,
+                0
+            ).getDate()
+
+    };
+
 }
 
 
-.mini-calendar-panel:hover {
-    transform: translateY(-2px);
+function getCell(
+    index,
+    info
+) {
 
-    box-shadow:
-        0 6px 15px
-        rgba(0, 0, 0, 0.08);
-}
+    let year =
+        info.year;
 
 
-.mini-calendar-subtitle {
-    margin-top: 4px;
+    let month =
+        info.month;
 
-    color: #6b7280;
 
-    font-size: 13px;
-}
+    let day;
 
 
-.mini-calendar-weekdays {
-    display: grid;
+    let outside =
+        false;
 
-    grid-template-columns:
-        repeat(7, 1fr);
 
-    margin-bottom: 5px;
-}
+    if (
+        index <
+        info.firstWeekday
+    ) {
 
+        day =
+            info.previousDays -
+            info.firstWeekday +
+            index +
+            1;
 
-.mini-calendar-weekdays div {
-    padding: 5px;
 
-    color: #6b7280;
+        month--;
 
-    text-align: center;
 
-    font-size: 12px;
+        if (
+            month < 0
+        ) {
 
-    font-weight: bold;
-}
+            month = 11;
 
+            year--;
 
-.mini-calendar {
-    display: grid;
+        }
 
-    grid-template-columns:
-        repeat(7, 1fr);
 
-    gap: 6px;
-}
+        outside =
+            true;
 
+    }
 
-.mini-date {
-    min-height: 80px;
+    else if (
+        index <
+        info.firstWeekday +
+        info.daysInMonth
+    ) {
 
-    padding: 6px;
+        day =
+            index -
+            info.firstWeekday +
+            1;
 
-    overflow: hidden;
+    }
 
-    border: 1px solid transparent;
+    else {
 
-    border-radius: 7px;
+        day =
+            index -
+            info.firstWeekday -
+            info.daysInMonth +
+            1;
 
-    font-size: 12px;
-}
 
+        month++;
 
-.mini-date:hover {
-    background: #f9fafb;
 
-    border-color: #e5e7eb;
-}
+        if (
+            month > 11
+        ) {
 
+            month = 0;
 
-.mini-date.outside-month {
-    background: #fafafa;
+            year++;
 
-    color: #c5c7cc;
-}
+        }
 
 
-.mini-date.today {
-    border: 2px solid #2563eb;
-}
+        outside =
+            true;
 
-
-.mini-date-number {
-    display: block;
-
-    margin-bottom: 4px;
-
-    font-weight: bold;
-}
-
-
-/* ================================================= */
-/* MINI ITEMS */
-/* ================================================= */
-
-.mini-event {
-    display: block;
-
-    width: 100%;
-
-    margin-top: 3px;
-
-    padding: 3px 4px;
-
-    border: none;
-
-    border-radius: 4px;
-
-    background: #dbeafe;
-
-    color: #1d4ed8;
-
-    text-align: left;
-
-    font-size: 9px;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-
-    cursor: pointer;
-}
-
-
-.mini-event.assignment {
-    background: #fee2e2;
-
-    color: #b91c1c;
-}
-
-
-.mini-event.exam {
-    background: #fef3c7;
-
-    color: #92400e;
-}
-
-
-.mini-more-events {
-    display: block;
-
-    margin-top: 3px;
-
-    color: #6b7280;
-
-    font-size: 9px;
-}
-
-
-/* ================================================= */
-/* CALENDAR KEY */
-/* ================================================= */
-
-.mini-calendar-key {
-    display: flex;
-
-    flex-wrap: wrap;
-
-    gap: 20px;
-
-    margin-top: 18px;
-
-    color: #6b7280;
-
-    font-size: 12px;
-}
-
-
-.calendar-dot {
-    display: inline-block;
-
-    width: 7px;
-    height: 7px;
-
-    margin-right: 5px;
-
-    border-radius: 50%;
-}
-
-
-.event-dot {
-    background: #2563eb;
-}
-
-
-.assignment-dot {
-    background: #dc2626;
-}
-
-
-.exam-dot {
-    background: #d97706;
-}
-
-
-/* ================================================= */
-/* FULL CALENDAR */
-/* ================================================= */
-
-.calendar-controls {
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: center;
-
-    padding: 15px;
-
-    background: white;
-
-    border: 1px solid #e5e7eb;
-
-    border-radius: 10px 10px 0 0;
-}
-
-
-.calendar-arrow {
-    padding: 8px 14px;
-
-    border: 1px solid #d1d5db;
-
-    border-radius: 6px;
-
-    background: white;
-
-    font-size: 18px;
-
-    cursor: pointer;
-}
-
-
-.calendar-arrow:hover {
-    background: #f3f4f6;
-}
-
-
-.calendar-weekdays {
-    display: grid;
-
-    grid-template-columns:
-        repeat(7, 1fr);
-
-    background: #f3f4f6;
-
-    border-left: 1px solid #ddd;
-}
-
-
-.calendar-weekdays div {
-    padding: 12px 5px;
-
-    border-right: 1px solid #ddd;
-
-    border-bottom: 1px solid #ddd;
-
-    text-align: center;
-
-    font-size: 13px;
-
-    font-weight: bold;
-}
-
-
-.calendar {
-    display: grid;
-
-    grid-template-columns:
-        repeat(7, 1fr);
-
-    background: white;
-
-    border-left: 1px solid #ddd;
-}
-
-
-.calendar-day {
-    min-height: 145px;
-
-    padding: 9px;
-
-    overflow: hidden;
-
-    border-right: 1px solid #ddd;
-
-    border-bottom: 1px solid #ddd;
-}
-
-
-.calendar-day.outside-month {
-    background: #fafafa;
-
-    color: #b7b7b7;
-}
-
-
-.calendar-day.today {
-    background: #eff6ff;
-}
-
-
-.calendar-date-number {
-    display: inline-flex;
-
-    justify-content: center;
-
-    align-items: center;
-
-    width: 28px;
-    height: 28px;
-
-    border-radius: 50%;
-
-    font-weight: bold;
-}
-
-
-.calendar-day.today
-.calendar-date-number {
-    background: #2563eb;
-
-    color: white;
-}
-
-
-/* ================================================= */
-/* FULL CALENDAR ITEMS */
-/* ================================================= */
-
-.calendar-event {
-    display: block;
-
-    width: 100%;
-
-    margin-top: 6px;
-
-    padding: 6px;
-
-    border: none;
-
-    border-radius: 4px;
-
-    background: #dbeafe;
-
-    color: #1d4ed8;
-
-    text-align: left;
-
-    font-size: 11px;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-
-    cursor: pointer;
-}
-
-
-.calendar-event:hover {
-    filter: brightness(0.96);
-}
-
-
-.calendar-event.assignment {
-    background: #fee2e2;
-
-    color: #b91c1c;
-}
-
-
-.calendar-event.exam {
-    background: #fef3c7;
-
-    color: #92400e;
-}
-
-
-@media (max-width: 800px) {
-
-    .calendar-day {
-        min-height: 100px;
-
-        padding: 5px;
     }
 
 
-    .calendar-event {
-        font-size: 9px;
+    return {
+        year,
+        month,
+        day,
+        outside
+    };
+
+}
+
+
+function isToday(
+    year,
+    month,
+    day
+) {
+
+    const today =
+        new Date();
+
+
+    return (
+
+        today.getFullYear() ===
+            year &&
+
+        today.getMonth() ===
+            month &&
+
+        today.getDate() ===
+            day
+
+    );
+
+}
+
+
+function createItemButton(
+    item,
+    mini = false
+) {
+
+    const button =
+        document.createElement(
+            "button"
+        );
+
+
+    button.type =
+        "button";
+
+
+    button.className =
+        `${
+            mini
+                ? "mini-item"
+                : "calendar-item"
+        } ${
+            item.type === "assignment" ||
+            item.type === "exam"
+                ? item.type
+                : ""
+        }`;
+
+
+    button.textContent =
+        item.title;
+
+
+    button.title =
+        item.title;
+
+
+    button.addEventListener(
+        "click",
+        event => {
+
+            event.stopPropagation();
+
+
+            openDetails(
+                item
+            );
+
+        }
+    );
+
+
+    return button;
+
+}
+
+
+function renderFullCalendar() {
+
+    const grid =
+        document.getElementById(
+            "fullCalendarGrid"
+        );
+
+
+    const heading =
+        document.getElementById(
+            "currentCalendarMonth"
+        );
+
+
+    if (
+        !grid ||
+        !heading
+    ) {
+
+        return;
+
     }
 
 
-    .mini-date {
-        min-height: 60px;
+    grid.replaceChildren();
+
+
+    const info =
+        getMonthInfo();
+
+
+    heading.textContent =
+        `${MONTH_NAMES[info.month]} ${info.year}`;
+
+
+    for (
+        let index = 0;
+        index < 42;
+        index++
+    ) {
+
+        const cell =
+            getCell(
+                index,
+                info
+            );
+
+
+        const day =
+            document.createElement(
+                "div"
+            );
+
+
+        day.className =
+            `calendar-day${
+                cell.outside
+                    ? " outside"
+                    : ""
+            }${
+                isToday(
+                    cell.year,
+                    cell.month,
+                    cell.day
+                )
+                    ? " today"
+                    : ""
+            }`;
+
+
+        const number =
+            document.createElement(
+                "span"
+            );
+
+
+        number.className =
+            "calendar-number";
+
+
+        number.textContent =
+            cell.day;
+
+
+        day.appendChild(
+            number
+        );
+
+
+        const items =
+            getCalendarItemsForDate(
+                createDateString(
+                    cell.year,
+                    cell.month,
+                    cell.day
+                )
+            );
+
+
+        items.forEach(
+            item => {
+
+                day.appendChild(
+                    createItemButton(
+                        item
+                    )
+                );
+
+            }
+        );
+
+
+        grid.appendChild(
+            day
+        );
+
     }
+
+}
+
+
+function renderMiniCalendar() {
+
+    const grid =
+        document.getElementById(
+            "miniCalendarGrid"
+        );
+
+
+    const heading =
+        document.getElementById(
+            "miniCalendarMonth"
+        );
+
+
+    if (
+        !grid ||
+        !heading
+    ) {
+
+        return;
+
+    }
+
+
+    grid.replaceChildren();
+
+
+    const info =
+        getMonthInfo();
+
+
+    heading.textContent =
+        `${MONTH_NAMES[info.month]} ${info.year}`;
+
+
+    for (
+        let index = 0;
+        index < 42;
+        index++
+    ) {
+
+        const cell =
+            getCell(
+                index,
+                info
+            );
+
+
+        const day =
+            document.createElement(
+                "div"
+            );
+
+
+        day.className =
+            `mini-day${
+                cell.outside
+                    ? " outside"
+                    : ""
+            }${
+                isToday(
+                    cell.year,
+                    cell.month,
+                    cell.day
+                )
+                    ? " today"
+                    : ""
+            }`;
+
+
+        const number =
+            document.createElement(
+                "span"
+            );
+
+
+        number.className =
+            "mini-number";
+
+
+        number.textContent =
+            cell.day;
+
+
+        day.appendChild(
+            number
+        );
+
+
+        getCalendarItemsForDate(
+            createDateString(
+                cell.year,
+                cell.month,
+                cell.day
+            )
+        )
+            .slice(
+                0,
+                2
+            )
+            .forEach(
+                item => {
+
+                    day.appendChild(
+                        createItemButton(
+                            item,
+                            true
+                        )
+                    );
+
+                }
+            );
+
+
+        grid.appendChild(
+            day
+        );
+
+    }
+
+}
+
+
+export function renderCalendar() {
+
+    renderFullCalendar();
+
+    renderMiniCalendar();
+
+}
+
+
+export function setupCalendar(
+    refreshApplication
+) {
+
+    document
+        .getElementById(
+            "previousMonthButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                calendarDate =
+                    new Date(
+                        calendarDate.getFullYear(),
+                        calendarDate.getMonth() - 1,
+                        1
+                    );
+
+
+                renderCalendar();
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "nextMonthButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                calendarDate =
+                    new Date(
+                        calendarDate.getFullYear(),
+                        calendarDate.getMonth() + 1,
+                        1
+                    );
+
+
+                renderCalendar();
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "openEventModalButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                const input =
+                    document.getElementById(
+                        "eventDate"
+                    );
+
+
+                if (input) {
+
+                    const today =
+                        new Date();
+
+
+                    input.value =
+                        createDateString(
+                            today.getFullYear(),
+                            today.getMonth(),
+                            today.getDate()
+                        );
+
+                }
+
+
+                openModal(
+                    "eventModal"
+                );
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "eventForm"
+        )
+        ?.addEventListener(
+            "submit",
+            event => {
+
+                event.preventDefault();
+
+
+                const topic =
+                    cleanText(
+                        document.getElementById(
+                            "eventTopic"
+                        )?.value,
+                        60
+                    );
+
+
+                const date =
+                    document.getElementById(
+                        "eventDate"
+                    )?.value || "";
+
+
+                const description =
+                    cleanMultilineText(
+                        document.getElementById(
+                            "eventDescription"
+                        )?.value,
+                        500
+                    );
+
+
+                if (!topic) {
+
+                    return showMessage(
+                        "Event topic is required.",
+                        "error"
+                    );
+
+                }
+
+
+                if (
+                    !isValidDateString(
+                        date
+                    )
+                ) {
+
+                    return showMessage(
+                        "Choose a valid event date.",
+                        "error"
+                    );
+
+                }
+
+
+                if (!description) {
+
+                    return showMessage(
+                        "Event description is required.",
+                        "error"
+                    );
+
+                }
+
+
+                addEvent({
+
+                    id:
+                        createId(
+                            "event"
+                        ),
+
+                    topic,
+
+                    date,
+
+                    description
+
+                });
+
+
+                document
+                    .getElementById(
+                        "eventForm"
+                    )
+                    .reset();
+
+
+                closeModal(
+                    "eventModal"
+                );
+
+
+                const [
+                    year,
+                    month
+                ] =
+                    date
+                        .split("-")
+                        .map(Number);
+
+
+                calendarDate =
+                    new Date(
+                        year,
+                        month - 1,
+                        1
+                    );
+
+
+                refreshApplication();
+
+
+                showMessage(
+                    "Event created."
+                );
+
+            }
+        );
 
 }
