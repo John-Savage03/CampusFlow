@@ -1,10 +1,12 @@
 /*
     professor.js
 
-    Responsible only for the Professor Dashboard.
+    Controls the Professor Dashboard.
 
-    The professor dashboard uses the same shared
-    CampusFlow state as the other application features.
+    Sprint 2 adds an optional Gradebook shortcut.
+
+    Missing optional dashboard buttons are ignored
+    instead of stopping CampusFlow startup.
 */
 
 
@@ -42,6 +44,59 @@ from "./navigation.js";
 
 
 
+/* ================================================= */
+/* OPTIONAL BUTTON HELPER */
+/* ================================================= */
+
+/*
+    Only attaches an event if the requested button
+    actually exists in index.html.
+
+    This prevents:
+
+        Cannot read properties of null
+        (reading 'addEventListener')
+
+    from stopping the entire application.
+*/
+
+function setupOptionalButton(
+    elementId,
+    pageName
+) {
+
+    const button =
+        document.getElementById(
+            elementId
+        );
+
+
+    if (!button) {
+
+        return;
+
+    }
+
+
+    button.addEventListener(
+        "click",
+        () => {
+
+            openPage(
+                pageName
+            );
+
+        }
+    );
+
+}
+
+
+
+/* ================================================= */
+/* UPCOMING TASKS */
+/* ================================================= */
+
 function getUpcomingTasks() {
 
     const today =
@@ -78,7 +133,10 @@ function getUpcomingTasks() {
             }
         )
         .sort(
-            (firstTask, secondTask) =>
+            (
+                firstTask,
+                secondTask
+            ) =>
 
                 firstTask.dueDate
                     .localeCompare(
@@ -91,50 +149,77 @@ function getUpcomingTasks() {
 
 
 
+/* ================================================= */
+/* SUMMARY CARDS */
+/* ================================================= */
+
 function renderProfessorSummary() {
 
-    const courses =
-        getCourses();
+    const courseCount =
+        document.getElementById(
+            "professorCourseCount"
+        );
 
 
-    const tasks =
-        getTasks();
+    const courseworkCount =
+        document.getElementById(
+            "professorCourseworkCount"
+        );
 
 
-    const events =
-        getEvents();
+    const upcomingCount =
+        document.getElementById(
+            "professorUpcomingCount"
+        );
 
 
-    const upcoming =
-        getUpcomingTasks();
+    const eventCount =
+        document.getElementById(
+            "professorEventCount"
+        );
 
 
-    document.getElementById(
-        "professorCourseCount"
-    ).textContent =
-        courses.length;
+    /*
+        The entire professor dashboard might not be
+        present in some builds.
+
+        If so, rendering safely stops here.
+    */
+
+    if (
+        !courseCount ||
+        !courseworkCount ||
+        !upcomingCount ||
+        !eventCount
+    ) {
+
+        return;
+
+    }
 
 
-    document.getElementById(
-        "professorCourseworkCount"
-    ).textContent =
-        tasks.length;
+    courseCount.textContent =
+        getCourses().length;
 
 
-    document.getElementById(
-        "professorUpcomingCount"
-    ).textContent =
-        upcoming.length;
+    courseworkCount.textContent =
+        getTasks().length;
 
 
-    document.getElementById(
-        "professorEventCount"
-    ).textContent =
-        events.length;
+    upcomingCount.textContent =
+        getUpcomingTasks().length;
+
+
+    eventCount.textContent =
+        getEvents().length;
 
 }
 
 
+
+/* ================================================= */
+/* COURSE OVERVIEW ITEM */
+/* ================================================= */
 
 function createCourseOverviewItem(
     course
@@ -273,12 +358,23 @@ function createCourseOverviewItem(
 
 
 
+/* ================================================= */
+/* COURSE OVERVIEW */
+/* ================================================= */
+
 function renderCourseOverview() {
 
     const container =
         document.getElementById(
             "professorCourseOverview"
         );
+
+
+    if (!container) {
+
+        return;
+
+    }
 
 
     container.replaceChildren();
@@ -333,12 +429,23 @@ function renderCourseOverview() {
 
 
 
+/* ================================================= */
+/* UPCOMING COURSEWORK */
+/* ================================================= */
+
 function renderUpcomingCoursework() {
 
     const container =
         document.getElementById(
             "professorUpcomingWork"
         );
+
+
+    if (!container) {
+
+        return;
+
+    }
 
 
     container.replaceChildren();
@@ -520,6 +627,10 @@ function renderUpcomingCoursework() {
 
 
 
+/* ================================================= */
+/* WEEK ITEM */
+/* ================================================= */
+
 function createWeekItemButton(
     item
 ) {
@@ -585,12 +696,23 @@ function createWeekItemButton(
 
 
 
+/* ================================================= */
+/* PROFESSOR WEEK */
+/* ================================================= */
+
 function renderProfessorWeek() {
 
     const container =
         document.getElementById(
             "professorWeeklyOverview"
         );
+
+
+    if (!container) {
+
+        return;
+
+    }
 
 
     container.replaceChildren();
@@ -704,7 +826,7 @@ function renderProfessorWeek() {
 
 
         /*
-            Add scheduled course meetings.
+            Display scheduled course meetings.
         */
 
         courses.forEach(
@@ -754,12 +876,6 @@ function renderProfessorWeek() {
                     "click",
                     () => {
 
-                        const courseTasks =
-                            getTasksForCourse(
-                                course.id
-                            );
-
-
                         openDetails({
 
                             id:
@@ -781,7 +897,7 @@ function renderProfessorWeek() {
                                 course.instructor,
 
                             description:
-                                `${courseTasks.length} coursework items currently tracked.`
+                                `${getTasksForCourse(course.id).length} coursework items currently tracked.`
 
                         });
 
@@ -801,7 +917,8 @@ function renderProfessorWeek() {
 
 
         /*
-            Add deadlines and calendar events.
+            Add events and coursework due on
+            the same date.
         */
 
         const calendarItems =
@@ -841,23 +958,23 @@ function renderProfessorWeek() {
             itemCount === 0
         ) {
 
-            const message =
+            const empty =
                 document.createElement(
                     "span"
                 );
 
 
-            message.classList.add(
+            empty.classList.add(
                 "empty-message"
             );
 
 
-            message.textContent =
+            empty.textContent =
                 "Clear";
 
 
             card.appendChild(
-                message
+                empty
             );
 
         }
@@ -873,7 +990,27 @@ function renderProfessorWeek() {
 
 
 
+/* ================================================= */
+/* PUBLIC PROFESSOR RENDER */
+/* ================================================= */
+
 export function renderProfessorDashboard() {
+
+    /*
+        If Professor Dashboard is not present,
+        no work is necessary.
+    */
+
+    if (
+        !document.getElementById(
+            "professorDashboard"
+        )
+    ) {
+
+        return;
+
+    }
+
 
     renderProfessorSummary();
 
@@ -887,47 +1024,40 @@ export function renderProfessorDashboard() {
 
 
 
+/* ================================================= */
+/* PROFESSOR SETUP */
+/* ================================================= */
+
 export function setupProfessorDashboard() {
 
-    document.getElementById(
-        "professorManageCoursesButton"
-    ).addEventListener(
-        "click",
-        () => {
-
-            openPage(
-                "courses"
-            );
-
-        }
+    setupOptionalButton(
+        "professorManageCoursesButton",
+        "courses"
     );
 
 
-    document.getElementById(
-        "professorCourseworkButton"
-    ).addEventListener(
-        "click",
-        () => {
-
-            openPage(
-                "assignments"
-            );
-
-        }
+    setupOptionalButton(
+        "professorCourseworkButton",
+        "assignments"
     );
 
 
-    document.getElementById(
-        "professorCalendarButton"
-    ).addEventListener(
-        "click",
-        () => {
+    /*
+        Sprint 2 button.
 
-            openPage(
-                "calendar"
-            );
+        If it is missing, Professor Dashboard still
+        works normally.
+    */
 
-        }
+    setupOptionalButton(
+        "professorGradesButton",
+        "grades"
+    );
+
+
+    setupOptionalButton(
+        "professorCalendarButton",
+        "calendar"
     );
 
 }
