@@ -1,0 +1,270 @@
+/*
+    grades.css
+
+    Contains only styles used by the Sprint 2
+    Grade Tracker and Grade Calculator.
+
+    Keeping grade-specific styling in its own file
+    prevents main.css from becoming overly large.
+*/
+
+
+/* ================================================= */
+/* MAIN GRADE LAYOUT */
+/* ================================================= */
+
+.grade-dashboard-grid {
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr;
+
+    gap: 20px;
+
+    margin-bottom: 20px;
+}
+
+
+.grade-tracker-panel {
+    margin-bottom: 30px;
+}
+
+
+/* ================================================= */
+/* COURSE AVERAGE CARDS */
+/* ================================================= */
+
+.grade-course-summary {
+    display: grid;
+
+    gap: 12px;
+}
+
+
+.grade-course-card {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 20px;
+
+    padding: 15px;
+
+    background: #f9fafb;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 8px;
+}
+
+
+.grade-course-card h3 {
+    margin-bottom: 5px;
+
+    font-size: 15px;
+}
+
+
+.grade-course-card p {
+    color: #6b7280;
+
+    font-size: 12px;
+}
+
+
+.grade-average {
+    text-align: right;
+}
+
+
+.grade-average strong {
+    display: block;
+
+    color: #2563eb;
+
+    font-size: 24px;
+}
+
+
+.grade-average span {
+    color: #6b7280;
+
+    font-size: 12px;
+}
+
+
+/* ================================================= */
+/* GRADE CALCULATOR */
+/* ================================================= */
+
+.grade-calculator {
+    display: flex;
+
+    flex-direction: column;
+}
+
+
+.calculator-current {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 18px;
+
+    padding: 14px;
+
+    background: #eff6ff;
+
+    border-radius: 8px;
+}
+
+
+.calculator-current span {
+    color: #4b5563;
+
+    font-size: 13px;
+}
+
+
+.calculator-current strong {
+    color: #1d4ed8;
+
+    font-size: 22px;
+}
+
+
+.calculator-button {
+    align-self: flex-start;
+}
+
+
+.calculator-result {
+    margin-top: 18px;
+
+    padding: 16px;
+
+    background: #f9fafb;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 8px;
+
+    line-height: 1.5;
+
+    color: #374151;
+}
+
+
+.calculator-result.success-result {
+    background: #f0fdf4;
+
+    border-color: #bbf7d0;
+
+    color: #166534;
+}
+
+
+.calculator-result.warning-result {
+    background: #fffbeb;
+
+    border-color: #fde68a;
+
+    color: #92400e;
+}
+
+
+.calculator-result.error-result {
+    background: #fef2f2;
+
+    border-color: #fecaca;
+
+    color: #b91c1c;
+}
+
+
+/* ================================================= */
+/* GRADE TABLE */
+/* ================================================= */
+
+.grade-score {
+    font-weight: bold;
+}
+
+
+.grade-percentage {
+    color: #2563eb;
+
+    font-weight: bold;
+}
+
+
+.grade-letter {
+    display: inline-flex;
+
+    min-width: 35px;
+
+    justify-content: center;
+
+    padding: 5px 8px;
+
+    border-radius: 5px;
+
+    background: #e0e7ff;
+
+    color: #3730a3;
+
+    font-weight: bold;
+}
+
+
+.grade-delete-button {
+    padding: 6px 10px;
+
+    border: 1px solid #fecaca;
+
+    border-radius: 6px;
+
+    background: #fff;
+
+    color: #b91c1c;
+
+    cursor: pointer;
+}
+
+
+.grade-delete-button:hover {
+    background: #fef2f2;
+}
+
+
+/* ================================================= */
+/* RESPONSIVE */
+/* ================================================= */
+
+@media (max-width: 1000px) {
+
+    .grade-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .grade-course-card {
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+
+    .grade-average {
+        text-align: left;
+    }
+
+}
