@@ -1,13 +1,4 @@
-/*
-    storage.js
-
-    Responsible only for reading and writing
-    CampusFlow data to browser localStorage.
-
-    Keeping storage separate makes it easier
-    to replace localStorage with a database later.
-*/
-
+/* storage.js - safe localStorage helpers */
 
 export function loadData(
     key,
@@ -16,24 +7,17 @@ export function loadData(
 
     try {
 
-        const storedValue =
+        const raw =
             localStorage.getItem(
                 key
             );
 
 
-        if (
-            storedValue === null
-        ) {
-
-            return fallbackValue;
-
-        }
-
-
-        return JSON.parse(
-            storedValue
-        );
+        return raw === null
+            ? fallbackValue
+            : JSON.parse(
+                raw
+            );
 
     }
 
@@ -52,7 +36,6 @@ export function loadData(
 }
 
 
-
 export function saveData(
     key,
     value
@@ -61,13 +44,10 @@ export function saveData(
     try {
 
         localStorage.setItem(
-
             key,
-
             JSON.stringify(
                 value
             )
-
         );
 
 
