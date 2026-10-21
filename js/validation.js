@@ -1,10 +1,17 @@
 /*
     validation.js
 
-    Centralizes validation rules so that
-    forms do not duplicate validation logic.
+    Centralizes input validation for CampusFlow.
+
+    This prevents each feature from creating its
+    own duplicate validation rules and makes future
+    changes easier to maintain.
 */
 
+
+/* ================================================= */
+/* TASK CONSTANTS */
+/* ================================================= */
 
 export const VALID_TASK_TYPES = [
     "assignment",
@@ -26,6 +33,10 @@ export const VALID_STATUSES = [
 ];
 
 
+/* ================================================= */
+/* COURSE CONSTANTS */
+/* ================================================= */
+
 export const VALID_COURSE_SCHEDULES = [
     "M/W/F",
     "T/Th",
@@ -35,11 +46,39 @@ export const VALID_COURSE_SCHEDULES = [
 ];
 
 
+/* ================================================= */
+/* GRADE CONSTANTS */
+/* ================================================= */
+
+/*
+    Grade categories are shared between the Grade
+    modal and the Grade Tracker filter.
+*/
+
+export const VALID_GRADE_CATEGORIES = [
+    "Homework",
+    "Quiz",
+    "Exam",
+    "Project",
+    "Participation",
+    "Lab",
+    "Other"
+];
+
+
+/* ================================================= */
+/* TEXT CLEANING */
+/* ================================================= */
 
 export function cleanText(
     value,
     maxLength = 100
 ) {
+
+    /*
+        Reject non-string values instead of allowing
+        unexpected data into application state.
+    */
 
     if (
         typeof value !== "string"
@@ -49,6 +88,11 @@ export function cleanText(
 
     }
 
+
+    /*
+        Remove unnecessary extra whitespace and limit
+        the maximum amount of stored text.
+    */
 
     return value
         .trim()
@@ -93,6 +137,9 @@ export function cleanMultilineText(
 }
 
 
+/* ================================================= */
+/* DATE VALIDATION */
+/* ================================================= */
 
 export function isValidDateString(
     value
@@ -106,6 +153,10 @@ export function isValidDateString(
 
     }
 
+
+    /*
+        Require the expected YYYY-MM-DD format.
+    */
 
     const match =
         /^(\d{4})-(\d{2})-(\d{2})$/
@@ -139,6 +190,12 @@ export function isValidDateString(
         );
 
 
+    /*
+        JavaScript can automatically roll invalid dates
+        forward. For example, February 31 could become a
+        March date. These comparisons prevent that.
+    */
+
     const date =
         new Date(
             year,
@@ -161,6 +218,9 @@ export function isValidDateString(
 }
 
 
+/* ================================================= */
+/* TIME VALIDATION */
+/* ================================================= */
 
 export function isValidTime(
     value
@@ -185,6 +245,9 @@ export function isValidTime(
 }
 
 
+/* ================================================= */
+/* EVENT VALIDATION */
+/* ================================================= */
 
 export function validateEvent(
     event
@@ -241,6 +304,9 @@ export function validateEvent(
 }
 
 
+/* ================================================= */
+/* TASK VALIDATION */
+/* ================================================= */
 
 export function validateTask(
     task
@@ -325,6 +391,9 @@ export function validateTask(
 }
 
 
+/* ================================================= */
+/* COURSE VALIDATION */
+/* ================================================= */
 
 export function validateCourse(
     course
@@ -374,6 +443,10 @@ export function validateCourse(
     }
 
 
+    /*
+        Online courses do not require a meeting time.
+    */
+
     if (
         course.days !== "Online" &&
         !isValidTime(
@@ -386,6 +459,96 @@ export function validateCourse(
         );
 
     }
+
+
+    return errors;
+
+}
+
+
+/* ================================================= */
+/* GRADE VALIDATION */
+/* ================================================= */
+
+export function validateGrade(
+    grade
+) {
+
+    const errors =
+        [];
+
+
+    if (!grade.courseId) {
+
+        errors.push(
+            "A course must be selected."
+        );
+
+    }
+
+
+    if (!grade.title) {
+
+        errors.push(
+            "A graded item title is required."
+        );
+
+    }
+
+
+    if (
+        !VALID_GRADE_CATEGORIES.includes(
+            grade.category
+        )
+    ) {
+
+        errors.push(
+            "A valid grade category is required."
+        );
+
+    }
+
+
+    /*
+        Number.isFinite prevents values such as NaN
+        and Infinity from entering the grade tracker.
+    */
+
+    if (
+        !Number.isFinite(
+            grade.pointsEarned
+        ) ||
+        grade.pointsEarned < 0 ||
+        grade.pointsEarned > 10000
+    ) {
+
+        errors.push(
+            "Points earned must be a valid positive number."
+        );
+
+    }
+
+
+    if (
+        !Number.isFinite(
+            grade.pointsPossible
+        ) ||
+        grade.pointsPossible <= 0 ||
+        grade.pointsPossible > 10000
+    ) {
+
+        errors.push(
+            "Points possible must be greater than zero."
+        );
+
+    }
+
+
+    /*
+        Points earned are allowed to exceed points possible.
+
+        This intentionally supports extra credit.
+    */
 
 
     return errors;
