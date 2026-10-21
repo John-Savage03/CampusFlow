@@ -1,13 +1,4 @@
-/*
-    navigation.js
-
-    Handles navigation between CampusFlow pages.
-
-    The Dashboard is role-aware. The logical
-    "dashboard" page resolves to either the
-    student or professor dashboard.
-*/
-
+/* navigation.js - page switching and quick navigation */
 
 import {
     getActiveRole
@@ -15,10 +6,8 @@ import {
 from "./state.js";
 
 
-
 let currentPage =
     "dashboard";
-
 
 
 function resolvePageId(
@@ -42,47 +31,26 @@ function resolvePageId(
 }
 
 
-
-export function getCurrentPage() {
-
-    return currentPage;
-
-}
-
-
-
 export function openPage(
     pageName
 ) {
 
-    const pages =
-        document.querySelectorAll(
-            ".page"
-        );
-
-
-    const buttons =
-        document.querySelectorAll(
-            ".nav-button"
-        );
-
-
-    const resolvedPageId =
+    const pageId =
         resolvePageId(
             pageName
         );
 
 
-    const selectedPage =
+    const target =
         document.getElementById(
-            resolvedPageId
+            pageId
         );
 
 
-    if (!selectedPage) {
+    if (!target) {
 
-        console.error(
-            `Page "${resolvedPageId}" was not found.`
+        console.warn(
+            `Page not found: ${pageId}`
         );
 
 
@@ -95,42 +63,50 @@ export function openPage(
         pageName;
 
 
-    pages.forEach(
-        page => {
+    document
+        .querySelectorAll(
+            ".page"
+        )
+        .forEach(
+            page => {
 
-            page.classList.remove(
-                "active-page"
-            );
+                page.classList.remove(
+                    "active-page"
+                );
 
-        }
-    );
-
-
-    buttons.forEach(
-        button => {
-
-            button.classList.remove(
-                "active"
-            );
-
-        }
-    );
+            }
+        );
 
 
-    selectedPage.classList.add(
+    document
+        .querySelectorAll(
+            ".nav-button"
+        )
+        .forEach(
+            button => {
+
+                button.classList.remove(
+                    "active"
+                );
+
+            }
+        );
+
+
+    target.classList.add(
         "active-page"
     );
 
 
-    const selectedButton =
+    const navButton =
         document.querySelector(
             `[data-page="${pageName}"]`
         );
 
 
-    if (selectedButton) {
+    if (navButton) {
 
-        selectedButton.classList.add(
+        navButton.classList.add(
             "active"
         );
 
@@ -145,7 +121,6 @@ export function openPage(
 }
 
 
-
 export function refreshCurrentPage() {
 
     openPage(
@@ -155,87 +130,92 @@ export function refreshCurrentPage() {
 }
 
 
+function connect(
+    id,
+    pageName
+) {
+
+    const button =
+        document.getElementById(
+            id
+        );
+
+
+    if (button) {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                openPage(
+                    pageName
+                );
+
+            }
+        );
+
+    }
+
+}
+
 
 export function setupNavigation() {
 
-    const buttons =
-        document.querySelectorAll(
+    document
+        .querySelectorAll(
             ".nav-button"
+        )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        openPage(
+                            button.dataset.page
+                        );
+
+                    }
+                );
+
+            }
         );
 
 
-    buttons.forEach(
-        button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    openPage(
-                        button.dataset.page
-                    );
-
-                }
-            );
-
-        }
+    connect(
+        "studentViewAssignmentsButton",
+        "assignments"
     );
 
 
-    const calendarButton =
-        document.getElementById(
-            "openCalendarButton"
-        );
-
-
-    const miniCalendar =
-        document.getElementById(
-            "miniCalendar"
-        );
-
-
-    const assignmentsButton =
-        document.getElementById(
-            "viewAssignmentsButton"
-        );
-
-
-    calendarButton.addEventListener(
-        "click",
-        event => {
-
-            event.stopPropagation();
-
-
-            openPage(
-                "calendar"
-            );
-
-        }
+    connect(
+        "studentOpenCalendarButton",
+        "calendar"
     );
 
 
-    miniCalendar.addEventListener(
-        "click",
-        () => {
-
-            openPage(
-                "calendar"
-            );
-
-        }
+    connect(
+        "professorCoursesButton",
+        "courses"
     );
 
 
-    assignmentsButton.addEventListener(
-        "click",
-        () => {
+    connect(
+        "professorAssignmentsButton",
+        "assignments"
+    );
 
-            openPage(
-                "assignments"
-            );
 
-        }
+    connect(
+        "professorGradesButton",
+        "grades"
+    );
+
+
+    connect(
+        "professorCalendarButton",
+        "calendar"
     );
 
 }
