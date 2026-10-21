@@ -1,12 +1,6 @@
-/*
-    utils.js
+/* utils.js - shared formatting and date helpers */
 
-    Reusable date, ID, and scheduling helpers.
-*/
-
-
-export const monthNames = [
-
+export const MONTH_NAMES = [
     "January",
     "February",
     "March",
@@ -19,9 +13,58 @@ export const monthNames = [
     "October",
     "November",
     "December"
-
 ];
 
+
+export function createId(
+    prefix
+) {
+
+    return (
+        `${prefix}-${Date.now()}-${Math.random()
+            .toString(16)
+            .slice(2)}`
+    );
+
+}
+
+
+export function cleanText(
+    value,
+    maxLength = 100
+) {
+
+    return typeof value === "string"
+        ? value
+            .trim()
+            .replace(
+                /\s+/g,
+                " "
+            )
+            .slice(
+                0,
+                maxLength
+            )
+        : "";
+
+}
+
+
+export function cleanMultilineText(
+    value,
+    maxLength = 500
+) {
+
+    return typeof value === "string"
+        ? value
+            .trim()
+            .slice(
+                0,
+                maxLength
+            )
+        : "";
+
+}
 
 
 export function createDateString(
@@ -30,30 +73,11 @@ export function createDateString(
     day
 ) {
 
-    const monthText =
-        String(
-            month + 1
-        ).padStart(
-            2,
-            "0"
-        );
-
-
-    const dayText =
-        String(
-            day
-        ).padStart(
-            2,
-            "0"
-        );
-
-
     return (
-        `${year}-${monthText}-${dayText}`
+        `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
     );
 
 }
-
 
 
 export function dateToString(
@@ -61,49 +85,84 @@ export function dateToString(
 ) {
 
     return createDateString(
-
         date.getFullYear(),
-
         date.getMonth(),
-
         date.getDate()
-
     );
 
 }
 
 
-
 export function parseDateString(
-    dateString
+    value
 ) {
 
-    const parts =
-        dateString
+    const [
+        year,
+        month,
+        day
+    ] =
+        value
             .split("-")
             .map(Number);
 
 
     return new Date(
-
-        parts[0],
-
-        parts[1] - 1,
-
-        parts[2]
-
+        year,
+        month - 1,
+        day
     );
 
 }
 
 
-
-export function formatDate(
-    dateString
+export function isValidDateString(
+    value
 ) {
 
+    if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(
+            value || ""
+        )
+    ) {
+
+        return false;
+
+    }
+
+
+    const date =
+        parseDateString(
+            value
+        );
+
+
+    return (
+        dateToString(
+            date
+        ) === value
+    );
+
+}
+
+
+export function formatDate(
+    value
+) {
+
+    if (
+        !isValidDateString(
+            value
+        )
+    ) {
+
+        return "Invalid date";
+
+    }
+
+
     return parseDateString(
-        dateString
+        value
     ).toLocaleDateString(
         "en-US",
         {
@@ -116,13 +175,23 @@ export function formatDate(
 }
 
 
-
 export function formatFullDate(
-    dateString
+    value
 ) {
 
+    if (
+        !isValidDateString(
+            value
+        )
+    ) {
+
+        return "Invalid date";
+
+    }
+
+
     return parseDateString(
-        dateString
+        value
     ).toLocaleDateString(
         "en-US",
         {
@@ -136,12 +205,15 @@ export function formatFullDate(
 }
 
 
-
 export function formatTime(
-    timeString
+    value
 ) {
 
-    if (!timeString) {
+    if (
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(
+            value || ""
+        )
+    ) {
 
         return "";
 
@@ -149,10 +221,10 @@ export function formatTime(
 
 
     const [
-        hours,
-        minutes
+        hour,
+        minute
     ] =
-        timeString
+        value
             .split(":")
             .map(Number);
 
@@ -162,8 +234,8 @@ export function formatTime(
 
 
     date.setHours(
-        hours,
-        minutes,
+        hour,
+        minute,
         0,
         0
     );
@@ -180,21 +252,6 @@ export function formatTime(
 }
 
 
-
-export function createId(
-    prefix
-) {
-
-    return (
-        `${prefix}-${Date.now()}-${Math.random()
-            .toString(16)
-            .slice(2)}`
-    );
-
-}
-
-
-
 export function courseMeetsOnDate(
     schedule,
     date
@@ -209,36 +266,105 @@ export function courseMeetsOnDate(
     }
 
 
-    const dayTokens = {
-
-        0: "Su",
-        1: "M",
-        2: "T",
-        3: "W",
-        4: "Th",
-        5: "F",
-        6: "Sa"
-
-    };
+    const dayTokens = [
+        "Su",
+        "M",
+        "T",
+        "W",
+        "Th",
+        "F",
+        "Sa"
+    ];
 
 
-    const todayToken =
+    const token =
         dayTokens[
             date.getDay()
         ];
 
 
-    const scheduleTokens =
+    return String(
         schedule
-            .split("/")
-            .map(
-                value =>
-                    value.trim()
-            );
+    )
+        .split("/")
+        .map(
+            part =>
+                part.trim()
+        )
+        .includes(
+            token
+        );
+
+}
 
 
-    return scheduleTokens.includes(
-        todayToken
-    );
+export function calculatePointsAverage(
+    records
+) {
+
+    const totals =
+        records.reduce(
+            (
+                sum,
+                item
+            ) => {
+
+                sum.earned +=
+                    Number(
+                        item.pointsEarned
+                    ) || 0;
+
+
+                sum.possible +=
+                    Number(
+                        item.pointsPossible
+                    ) || 0;
+
+
+                return sum;
+
+            },
+            {
+                earned: 0,
+                possible: 0
+            }
+        );
+
+
+    return totals.possible > 0
+        ? (
+            totals.earned /
+            totals.possible
+        ) * 100
+        : null;
+
+}
+
+
+export function getLetterGrade(
+    value
+) {
+
+    if (
+        value === null ||
+        !Number.isFinite(
+            value
+        )
+    ) {
+
+        return "--";
+
+    }
+
+
+    if (value >= 90) return "A";
+
+    if (value >= 80) return "B";
+
+    if (value >= 70) return "C";
+
+    if (value >= 60) return "D";
+
+    return "F";
 
 }
