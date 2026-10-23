@@ -1,4 +1,14 @@
-/* dashboard.js - renders both role dashboards */
+/*
+    dashboard.js
+
+    Renders Student and Professor dashboards.
+
+    Dashboard statistics now use the same persisted
+    task collection as the Assignments page.
+
+    Incomplete overdue assignments remain counted.
+*/
+
 
 import {
     getCourses,
@@ -27,7 +37,12 @@ import {
 from "./ui.js";
 
 
-function upcomingTasks() {
+
+/* ================================================= */
+/* DATE HELPERS */
+/* ================================================= */
+
+function todayAtMidnight() {
 
     const today =
         new Date();
@@ -41,14 +56,34 @@ function upcomingTasks() {
     );
 
 
+    return today;
+
+}
+
+
+
+/* ================================================= */
+/* ACTIVE TASKS */
+/* ================================================= */
+
+/*
+    Active tasks include every task that has not
+    been completed.
+
+    This includes overdue work.
+
+    This fixes the issue where assignments remained
+    in storage but disappeared from Dashboard counts
+    after their due date passed.
+*/
+
+function activeTasks() {
+
     return getTasks()
         .filter(
             task =>
-                parseDateString(
-                    task.dueDate
-                ) >= today &&
                 task.status !==
-                    "Completed"
+                "Completed"
         )
         .sort(
             (
@@ -62,6 +97,38 @@ function upcomingTasks() {
 
 }
 
+
+
+/* ================================================= */
+/* FUTURE TASKS */
+/* ================================================= */
+
+/*
+    Future tasks are used specifically when looking
+    for the next upcoming deadline.
+*/
+
+function futureTasks() {
+
+    const today =
+        todayAtMidnight();
+
+
+    return activeTasks()
+        .filter(
+            task =>
+                parseDateString(
+                    task.dueDate
+                ) >= today
+        );
+
+}
+
+
+
+/* ================================================= */
+/* EMPTY MESSAGE */
+ /* ================================================= */
 
 function empty(
     container,
@@ -89,6 +156,11 @@ function empty(
 }
 
 
+
+/* ================================================= */
+/* CREATE TASK BUTTON */
+/* ================================================= */
+
 function createTaskButton(
     task
 ) {
@@ -111,6 +183,7 @@ function createTaskButton(
 
     button.className =
         "assignment-preview";
+
 
 
     const left =
@@ -153,6 +226,7 @@ function createTaskButton(
     );
 
 
+
     const date =
         document.createElement(
             "span"
@@ -163,10 +237,26 @@ function createTaskButton(
         "task-date";
 
 
-    date.textContent =
-        formatDate(
+    const dueDate =
+        parseDateString(
             task.dueDate
         );
+
+
+    const today =
+        todayAtMidnight();
+
+
+    /*
+        Clearly identify overdue work.
+    */
+
+    date.textContent =
+        dueDate < today
+            ? `Overdue • ${formatDate(task.dueDate)}`
+            : formatDate(
+                task.dueDate
+            );
 
 
     button.append(
@@ -212,31 +302,49 @@ function createTaskButton(
 }
 
 
+
 /* ================================================= */
-/* STUDENT DASHBOARD */
+/* STUDENT SUMMARY */
 /* ================================================= */
 
 function renderStudentSummary() {
 
-    const upcoming =
-        upcomingTasks();
-
+    /*
+        Always get fresh data directly from state.
+    */
 
     const tasks =
         getTasks();
 
 
+    const active =
+        activeTasks();
+
+
+    const future =
+        futureTasks();
+
+
+
+    /* ---------------- ACTIVE WORK COUNT ---------------- */
+
     document.getElementById(
         "studentUpcomingCount"
     ).textContent =
-        upcoming.length;
+        active.length;
 
+
+
+    /* ---------------- COURSE COUNT ---------------- */
 
     document.getElementById(
         "studentCourseCount"
     ).textContent =
         getCourses().length;
 
+
+
+    /* ---------------- COMPLETED COUNT ---------------- */
 
     document.getElementById(
         "studentCompletedCount"
@@ -248,8 +356,21 @@ function renderStudentSummary() {
         ).length;
 
 
+
+    /* ---------------- NEXT DEADLINE ---------------- */
+
+    /*
+        Prefer a future task.
+
+        If everything remaining is overdue, show the
+        oldest active task rather than displaying
+        "None" while work still exists.
+    */
+
     const next =
-        upcoming[0];
+        future[0] ||
+        active[0] ||
+        null;
 
 
     document.getElementById(
@@ -260,17 +381,45 @@ function renderStudentSummary() {
             : "None";
 
 
+    if (!next) {
+
+        document.getElementById(
+            "studentNextDeadlineDate"
+        ).textContent =
+            "No active coursework";
+
+
+        return;
+
+    }
+
+
+    const nextDate =
+        parseDateString(
+            next.dueDate
+        );
+
+
+    const today =
+        todayAtMidnight();
+
+
     document.getElementById(
         "studentNextDeadlineDate"
     ).textContent =
-        next
-            ? formatDate(
+        nextDate < today
+            ? `Overdue • ${formatDate(next.dueDate)}`
+            : formatDate(
                 next.dueDate
-            )
-            : "No upcoming work";
+            );
 
 }
 
+
+
+/* ================================================= */
+/* STUDENT UPCOMING LIST */
+/* ================================================= */
 
 function renderStudentUpcoming() {
 
@@ -280,11 +429,25 @@ function renderStudentUpcoming() {
         );
 
 
+    if (!container) {
+
+        return;
+
+    }
+
+
     container.replaceChildren();
 
 
+    /*
+        Show active work rather than only future work.
+
+        That prevents overdue saved assignments from
+        disappearing after a reload.
+    */
+
     const items =
-        upcomingTasks()
+        activeTasks()
             .slice(
                 0,
                 5
@@ -297,7 +460,7 @@ function renderStudentUpcoming() {
 
         return empty(
             container,
-            "No upcoming assignments or exams."
+            "No active assignments or exams."
         );
 
     }
@@ -318,12 +481,24 @@ function renderStudentUpcoming() {
 }
 
 
+
+/* ================================================= */
+/* TODAY'S SCHEDULE */
+/* ================================================= */
+
 function renderTodaySchedule() {
 
     const container =
         document.getElementById(
             "studentTodaySchedule"
         );
+
+
+    if (!container) {
+
+        return;
+
+    }
 
 
     container.replaceChildren();
@@ -442,8 +617,9 @@ function renderTodaySchedule() {
 }
 
 
+
 /* ================================================= */
-/* SHARED WEEK VIEW */
+/* WEEK VIEW */
 /* ================================================= */
 
 function renderWeek(
@@ -457,23 +633,23 @@ function renderWeek(
         );
 
 
+    if (!container) {
+
+        return;
+
+    }
+
+
     container.replaceChildren();
 
 
     const today =
-        new Date();
-
-
-    today.setHours(
-        0,
-        0,
-        0,
-        0
-    );
+        todayAtMidnight();
 
 
     const courses =
         getCourses();
+
 
 
     for (
@@ -508,6 +684,7 @@ function renderWeek(
             }`;
 
 
+
         const dayName =
             document.createElement(
                 "div"
@@ -525,6 +702,7 @@ function renderWeek(
                     weekday: "short"
                 }
             );
+
 
 
         const dayDate =
@@ -556,6 +734,9 @@ function renderWeek(
         let count =
             0;
 
+
+
+        /* ---------------- CLASSES ---------------- */
 
         if (
             includeClasses
@@ -610,7 +791,9 @@ function renderWeek(
                                         `${course.code} - ${course.name}`,
 
                                     schedule:
-                                        `${course.days} • ${formatTime(course.time)}`,
+                                        course.days === "Online"
+                                            ? "Online"
+                                            : `${course.days} • ${formatTime(course.time)}`,
 
                                     instructor:
                                         course.instructor,
@@ -636,6 +819,9 @@ function renderWeek(
 
         }
 
+
+
+        /* ---------------- CALENDAR ITEMS ---------------- */
 
         getCalendarItemsForDate(
             dateToString(
@@ -698,6 +884,9 @@ function renderWeek(
             );
 
 
+
+        /* ---------------- EMPTY DAY ---------------- */
+
         if (
             !count
         ) {
@@ -732,8 +921,9 @@ function renderWeek(
 }
 
 
+
 /* ================================================= */
-/* PROFESSOR DASHBOARD */
+/* PROFESSOR SUMMARY */
 /* ================================================= */
 
 function renderProfessorSummary() {
@@ -756,13 +946,23 @@ function renderProfessorSummary() {
         getGrades().length;
 
 
+    /*
+        Count all incomplete coursework instead of
+        only coursework with a future date.
+    */
+
     document.getElementById(
         "professorUpcomingCount"
     ).textContent =
-        upcomingTasks().length;
+        activeTasks().length;
 
 }
 
+
+
+/* ================================================= */
+/* PROFESSOR COURSES */
+/* ================================================= */
 
 function renderProfessorCourses() {
 
@@ -770,6 +970,13 @@ function renderProfessorCourses() {
         document.getElementById(
             "professorCourseOverview"
         );
+
+
+    if (!container) {
+
+        return;
+
+    }
 
 
     container.replaceChildren();
@@ -914,6 +1121,11 @@ function renderProfessorCourses() {
 }
 
 
+
+/* ================================================= */
+/* PROFESSOR UPCOMING WORK */
+/* ================================================= */
+
 function renderProfessorUpcoming() {
 
     const container =
@@ -922,11 +1134,18 @@ function renderProfessorUpcoming() {
         );
 
 
+    if (!container) {
+
+        return;
+
+    }
+
+
     container.replaceChildren();
 
 
     const items =
-        upcomingTasks()
+        activeTasks()
             .slice(
                 0,
                 5
@@ -939,7 +1158,7 @@ function renderProfessorUpcoming() {
 
         return empty(
             container,
-            "No upcoming coursework."
+            "No active coursework."
         );
 
     }
@@ -960,11 +1179,14 @@ function renderProfessorUpcoming() {
 }
 
 
+
 /* ================================================= */
 /* PUBLIC RENDER */
 /* ================================================= */
 
 export function renderDashboards() {
+
+    /* Student */
 
     renderStudentSummary();
 
@@ -977,6 +1199,8 @@ export function renderDashboards() {
         false
     );
 
+
+    /* Professor */
 
     renderProfessorSummary();
 

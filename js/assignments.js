@@ -1,4 +1,18 @@
-/* assignments.js - assignment/exam tracker */
+/*
+    assignments.js
+
+    Assignment and Exam Tracker.
+
+    Supports:
+
+    - Adding assignments/exams
+    - Filtering coursework
+    - Updating status
+    - Viewing details
+    - Removing coursework
+    - Refreshing Dashboard statistics automatically
+*/
+
 
 import {
     getCourses,
@@ -6,6 +20,7 @@ import {
     getCourseById,
     addTask,
     updateTaskStatus,
+    deleteTask,
     TASK_STATUSES
 }
 from "./state.js";
@@ -30,6 +45,49 @@ import {
 from "./ui.js";
 
 
+
+/* ================================================= */
+/* APPLICATION REFRESH */
+/* ================================================= */
+
+/*
+    setupAssignments receives refreshApplication()
+    from app.js.
+
+    Saving it here lets status changes and deletes
+    refresh the entire CampusFlow interface.
+*/
+
+let refreshApplicationCallback =
+    null;
+
+
+
+function refreshEverything() {
+
+    if (
+        typeof refreshApplicationCallback ===
+        "function"
+    ) {
+
+        refreshApplicationCallback();
+
+    }
+
+    else {
+
+        renderAssignments();
+
+    }
+
+}
+
+
+
+/* ================================================= */
+/* OPTION HELPER */
+/* ================================================= */
+
 function option(
     value,
     label
@@ -53,6 +111,11 @@ function option(
 
 }
 
+
+
+/* ================================================= */
+/* COURSE SELECTORS */
+/* ================================================= */
 
 function populateCourseSelectors() {
 
@@ -126,14 +189,18 @@ function populateCourseSelectors() {
     filter.value =
         courses.some(
             course =>
-                course.id ===
-                previous
+                course.id === previous
         )
             ? previous
             : "all";
 
 }
 
+
+
+/* ================================================= */
+/* TABLE CELL */
+/* ================================================= */
 
 function cell(
     text
@@ -153,6 +220,11 @@ function cell(
 
 }
 
+
+
+/* ================================================= */
+/* TASK DETAILS */
+/* ================================================= */
 
 function taskDetails(
     task
@@ -190,6 +262,73 @@ function taskDetails(
 
 }
 
+
+
+/* ================================================= */
+/* REMOVE TASK */
+/* ================================================= */
+
+function removeTask(
+    task
+) {
+
+    const typeName =
+        task.type === "exam"
+            ? "exam"
+            : "assignment";
+
+
+    const confirmed =
+        window.confirm(
+            `Remove "${task.title}" from CampusFlow?`
+        );
+
+
+    if (!confirmed) {
+
+        return;
+
+    }
+
+
+    const removed =
+        deleteTask(
+            task.id
+        );
+
+
+    if (!removed) {
+
+        showMessage(
+            `Unable to remove the ${typeName}.`,
+            "error"
+        );
+
+
+        return;
+
+    }
+
+
+    refreshEverything();
+
+
+    showMessage(
+        `${
+            task.type === "exam"
+                ? "Exam"
+                : "Assignment"
+        } removed.`,
+        "success"
+    );
+
+}
+
+
+
+/* ================================================= */
+/* RENDER ASSIGNMENTS */
+/* ================================================= */
 
 export function renderAssignments() {
 
@@ -234,6 +373,8 @@ export function renderAssignments() {
         getTasks();
 
 
+    /* ---------------- COURSE FILTER ---------------- */
+
     if (
         courseFilter !== "all"
     ) {
@@ -247,6 +388,8 @@ export function renderAssignments() {
 
     }
 
+
+    /* ---------------- TYPE FILTER ---------------- */
 
     if (
         typeFilter !== "all"
@@ -262,6 +405,8 @@ export function renderAssignments() {
     }
 
 
+    /* ---------------- STATUS FILTER ---------------- */
+
     if (
         statusFilter !== "all"
     ) {
@@ -276,6 +421,8 @@ export function renderAssignments() {
     }
 
 
+    /* ---------------- SORT BY DATE ---------------- */
+
     tasks.sort(
         (
             first,
@@ -286,6 +433,8 @@ export function renderAssignments() {
             )
     );
 
+
+    /* ---------------- EMPTY TABLE ---------------- */
 
     if (
         !tasks.length
@@ -322,6 +471,11 @@ export function renderAssignments() {
     }
 
 
+
+    /* ================================================= */
+    /* CREATE ROWS */
+    /* ================================================= */
+
     tasks.forEach(
         task => {
 
@@ -340,6 +494,9 @@ export function renderAssignments() {
             row.className =
                 "clickable-row";
 
+
+
+            /* ---------------- TYPE ---------------- */
 
             const typeCell =
                 document.createElement(
@@ -368,32 +525,69 @@ export function renderAssignments() {
             );
 
 
+
+            /* ---------------- BASIC CELLS ---------------- */
+
             row.append(
                 typeCell,
+
                 cell(
                     task.title
                 ),
+
                 cell(
                     course
                         ? course.code
                         : "Unknown Course"
                 ),
+
                 cell(
                     formatDate(
                         task.dueDate
                     )
                 ),
+
                 cell(
                     task.priority
                 )
             );
 
 
+
+            /* ================================================= */
+            /* STATUS + REMOVE BUTTON */
+            /* ================================================= */
+
             const statusCell =
                 document.createElement(
                     "td"
                 );
 
+
+            const controls =
+                document.createElement(
+                    "div"
+                );
+
+
+            controls.style.display =
+                "flex";
+
+
+            controls.style.alignItems =
+                "center";
+
+
+            controls.style.gap =
+                "8px";
+
+
+            controls.style.flexWrap =
+                "wrap";
+
+
+
+            /* ---------------- STATUS SELECT ---------------- */
 
             const select =
                 document.createElement(
@@ -440,25 +634,95 @@ export function renderAssignments() {
                     event.stopPropagation();
 
 
-                    updateTaskStatus(
-                        task.id,
-                        select.value
-                    );
+                    const updated =
+                        updateTaskStatus(
+                            task.id,
+                            select.value
+                        );
+
+
+                    if (!updated) {
+
+                        showMessage(
+                            "Unable to update task status.",
+                            "error"
+                        );
+
+
+                        return;
+
+                    }
+
+
+                    /*
+                        Refresh EVERYTHING instead of
+                        only the Assignments table.
+
+                        This keeps Dashboard numbers
+                        synchronized.
+                    */
+
+                    refreshEverything();
 
 
                     showMessage(
-                        "Task status updated."
+                        "Task status updated.",
+                        "success"
                     );
-
-
-                    renderAssignments();
 
                 }
             );
 
 
+
+            /* ---------------- REMOVE BUTTON ---------------- */
+
+            const removeButton =
+                document.createElement(
+                    "button"
+                );
+
+
+            removeButton.type =
+                "button";
+
+
+            /*
+                delete-button already exists in your
+                CampusFlow CSS because Grades uses it.
+            */
+
+            removeButton.className =
+                "delete-button";
+
+
+            removeButton.textContent =
+                "Remove";
+
+
+            removeButton.addEventListener(
+                "click",
+                event => {
+
+                    event.stopPropagation();
+
+
+                    removeTask(
+                        task
+                    );
+
+                }
+            );
+
+
+            controls.append(
+                select,
+                removeButton
+            );
+
+
             statusCell.appendChild(
-                select
+                controls
             );
 
 
@@ -466,6 +730,9 @@ export function renderAssignments() {
                 statusCell
             );
 
+
+
+            /* ---------------- VIEW DETAILS ---------------- */
 
             row.addEventListener(
                 "click",
@@ -489,9 +756,27 @@ export function renderAssignments() {
 }
 
 
+
+/* ================================================= */
+/* SETUP */
+/* ================================================= */
+
 export function setupAssignments(
     refreshApplication
 ) {
+
+    /*
+        Save the global CampusFlow refresh function.
+    */
+
+    refreshApplicationCallback =
+        refreshApplication;
+
+
+
+    /* ================================================= */
+    /* FILTERS */
+    /* ================================================= */
 
     [
         "taskCourseFilter",
@@ -512,6 +797,11 @@ export function setupAssignments(
         }
     );
 
+
+
+    /* ================================================= */
+    /* OPEN MODAL */
+    /* ================================================= */
 
     document
         .getElementById(
@@ -544,6 +834,11 @@ export function setupAssignments(
         );
 
 
+
+    /* ================================================= */
+    /* ADD TASK */
+    /* ================================================= */
+
     document
         .getElementById(
             "taskForm"
@@ -553,6 +848,7 @@ export function setupAssignments(
             event => {
 
                 event.preventDefault();
+
 
 
                 const type =
@@ -603,6 +899,9 @@ export function setupAssignments(
                     );
 
 
+
+                /* ---------------- VALIDATE TYPE ---------------- */
+
                 if (
                     ![
                         "assignment",
@@ -620,6 +919,9 @@ export function setupAssignments(
                 }
 
 
+
+                /* ---------------- VALIDATE COURSE ---------------- */
+
                 if (
                     !getCourseById(
                         courseId
@@ -634,6 +936,9 @@ export function setupAssignments(
                 }
 
 
+
+                /* ---------------- VALIDATE TITLE ---------------- */
+
                 if (!title) {
 
                     return showMessage(
@@ -643,6 +948,9 @@ export function setupAssignments(
 
                 }
 
+
+
+                /* ---------------- VALIDATE DATE ---------------- */
 
                 if (
                     !isValidDateString(
@@ -658,28 +966,45 @@ export function setupAssignments(
                 }
 
 
-                addTask({
 
-                    id:
-                        createId(
-                            "task"
-                        ),
+                /* ================================================= */
+                /* ADD TASK */
+                /* ================================================= */
 
-                    type,
+                const saved =
+                    addTask({
 
-                    courseId,
+                        id:
+                            createId(
+                                "task"
+                            ),
 
-                    title,
+                        type,
 
-                    dueDate,
+                        courseId,
 
-                    priority,
+                        title,
 
-                    status,
+                        dueDate,
 
-                    description
+                        priority,
 
-                });
+                        status,
+
+                        description
+
+                    });
+
+
+                if (!saved) {
+
+                    return showMessage(
+                        "Unable to save coursework.",
+                        "error"
+                    );
+
+                }
+
 
 
                 document
@@ -694,11 +1019,17 @@ export function setupAssignments(
                 );
 
 
-                refreshApplication();
+                /*
+                    Refresh Assignments, Dashboard,
+                    Calendar, Course Hub, etc.
+                */
+
+                refreshEverything();
 
 
                 showMessage(
-                    "Coursework added."
+                    "Coursework added.",
+                    "success"
                 );
 
             }
