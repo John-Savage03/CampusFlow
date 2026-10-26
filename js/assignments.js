@@ -6,7 +6,10 @@ import {
     getCourseById,
     addTask,
     updateTaskStatus,
-    TASK_STATUSES
+    TASK_STATUSES,
+    getEvents,
+    addEvent,
+    getActiveRole
 }
 from "./state.js";
 
@@ -16,7 +19,10 @@ import {
     cleanText,
     cleanMultilineText,
     isValidDateString,
-    formatDate
+    formatDate,
+    formatTime,
+    dateToString,
+    parseDateString
 }
 from "./utils.js";
 
@@ -304,7 +310,7 @@ export function renderAssignments() {
 
 
         td.colSpan =
-            6;
+            7;
 
 
         row.appendChild(
@@ -466,6 +472,28 @@ export function renderAssignments() {
                 statusCell
             );
 
+            /* Study planner button */
+            const studyCell = document.createElement("td");
+
+            if (getActiveRole() === "student" && task.status !== "Completed") {
+
+                const studyButton = document.createElement("button");
+                studyButton.type = "button";
+                studyButton.className = "secondary-button";
+                studyButton.textContent = "Schedule Study";
+
+                studyButton.addEventListener("click", event => {
+                    event.stopPropagation();
+                    openStudyModal(task);
+                });
+
+                studyCell.appendChild(studyButton);
+
+            }
+
+            row.appendChild(studyCell);
+
+            /* end of button*/
 
             row.addEventListener(
                 "click",
@@ -488,10 +516,140 @@ export function renderAssignments() {
 
 }
 
+/* ================================================= */
+/* STUDY PLANNER */
+/* ================================================= */
+
+let studyTask = null;
+
+
+function openStudyModal(task) {
+
+    const list = document.getElementById("studyDayList");
+
+    if (!list) {
+        return;
+    }
+
+    list.replaceChildren();
+
+    studyTask = task;
+
+    document.getElementById("studyTaskName").textContent =
+        `${task.title} - due ${formatDate(task.dueDate)}`;
+
+    /* Offer today through the due date (at most 14 days). */
+    const due = parseDateString(task.dueDate);
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const earliest = new Date(due);
+    earliest.setDate(earliest.getDate() - 13);
+
+    if (earliest > start) {
+        start.setTime(earliest.getTime());
+    }
+
+    for (const day = new Date(start); day <= due; day.setDate(day.getDate() + 1)) {
+
+        const row = document.createElement("div");
+        row.className = "study-day";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = dateToString(day);
+
+        const label = document.createElement("span");
+        label.textContent = day.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric"
+        });
+
+        const time = document.createElement("input");
+        time.type = "time";
+        time.value = "16:00";
+
+        row.append(checkbox, label, time);
+        list.appendChild(row);
+
+    }
+
+    if (!list.children.length) {
+        return showMessage("This deadline has already passed.", "warning");
+    }
+
+    openModal("studyModal");
+
+}
+
+
+function setupStudyPlanner(refreshApplication) {
+
+    document.getElementById("studyForm")?.addEventListener("submit", event => {
+
+        event.preventDefault();
+
+        const minutes = Number(document.getElementById("studyLength").value);
+        const existing = getEvents();
+        let added = 0;
+
+        document.querySelectorAll("#studyDayList .study-day").forEach(row => {
+
+            const checkbox = row.querySelector("input[type=checkbox]");
+            const startTime = row.querySelector("input[type=time]").value;
+
+            if (!checkbox.checked || !startTime) {
+                return;
+            }
+
+            /* Work out the end time. */
+            const [hour, minute] = startTime.split(":").map(Number);
+            const end = new Date(2000, 0, 1, hour, minute + minutes);
+            const endTime =
+                `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
+
+            const topic =
+                `Study: ${cleanText(studyTask.title, 30)} (${formatTime(startTime)})`;
+
+            /* Skip a block that is already scheduled. */
+            if (existing.some(item => item.date === checkbox.value && item.topic === topic)) {
+                return;
+            }
+
+            addEvent({
+                id: createId("event"),
+                topic,
+                date: checkbox.value,
+                description:
+                    `Study session for ${studyTask.title}\n${formatTime(startTime)} - ${formatTime(endTime)}\nDue ${formatDate(studyTask.dueDate)}`
+            });
+
+            added++;
+
+        });
+
+        if (!added) {
+            return showMessage("Check at least one new day and time.", "error");
+        }
+
+        closeModal("studyModal");
+        refreshApplication();
+        showMessage(`${added} study block${added === 1 ? "" : "s"} added to your calendar.`);
+
+    });
+
+}
+
+/*end of study planner*/
 
 export function setupAssignments(
     refreshApplication
 ) {
+
+    /*one line below for study plan*/
+    setupStudyPlanner(refreshApplication);
 
     [
         "taskCourseFilter",

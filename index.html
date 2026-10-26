@@ -771,6 +771,7 @@
                             <th>Due Date</th>
                             <th>Priority</th>
                             <th>Status</th>
+                            <th>Study</th>
                         </tr>
 
                     </thead>
@@ -1863,6 +1864,56 @@
 
     </div>
 
+    <!-- ================================================= -->
+    <!-- STUDY PLANNER MODAL -->
+    <!-- ================================================= -->
+
+    <div id="studyModal" class="modal-overlay" aria-hidden="true">
+
+        <div class="modal">
+
+            <div class="modal-header">
+                <div>
+                    <h2>Schedule Study Time</h2>
+                    <p id="studyTaskName"></p>
+                </div>
+
+                <button type="button" class="close-button" data-close-modal="studyModal">
+                    ×
+                </button>
+            </div>
+
+            <form id="studyForm">
+
+                <div class="form-group">
+                    <label for="studyLength">Session Length</label>
+                    <select id="studyLength">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>1 hour</option>
+                        <option value="90">1.5 hours</option>
+                        <option value="120">2 hours</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Check the days you are available and set a start time</label>
+                    <div id="studyDayList" class="study-day-list"></div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="secondary-button" data-close-modal="studyModal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="primary-button">
+                        Add to Calendar
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
 
     <script
         type="module"
