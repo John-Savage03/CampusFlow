@@ -3,14 +3,8 @@
 
     Central CampusFlow application data layer.
 
-    Sprint 3 update:
-
-    Academic data is now stored separately for each
-    logged-in account.
-
-    This prevents different accounts on the same
-    browser from seeing one another's courses,
-    assignments, events, and grades.
+    Academic information is stored separately
+    for each logged-in account.
 */
 
 
@@ -37,13 +31,6 @@ from "./account-storage.js";
 /* ================================================= */
 /* STORAGE KEYS */
 /* ================================================= */
-
-/*
-    Role remains a normal application setting because
-    auth-guard.js sets it from the logged-in account.
-
-    Academic data uses account-specific keys.
-*/
 
 const KEYS = {
 
@@ -141,7 +128,7 @@ function copy(
 
 
 /* ================================================= */
-/* DATA VALIDATION */
+/* VALIDATION */
 /* ================================================= */
 
 function validCourse(
@@ -152,23 +139,17 @@ function validCourse(
 
         course &&
 
-        typeof course.id ===
-            "string" &&
+        typeof course.id === "string" &&
 
-        typeof course.code ===
-            "string" &&
+        typeof course.code === "string" &&
 
-        typeof course.name ===
-            "string" &&
+        typeof course.name === "string" &&
 
-        typeof course.instructor ===
-            "string" &&
+        typeof course.instructor === "string" &&
 
-        typeof course.days ===
-            "string" &&
+        typeof course.days === "string" &&
 
-        typeof course.time ===
-            "string"
+        typeof course.time === "string"
 
     );
 
@@ -184,6 +165,8 @@ function validTask(
 
         task &&
 
+        typeof task.id === "string" &&
+
         [
             "assignment",
             "exam"
@@ -191,14 +174,9 @@ function validTask(
             task.type
         ) &&
 
-        typeof task.id ===
-            "string" &&
+        typeof task.title === "string" &&
 
-        typeof task.title ===
-            "string" &&
-
-        typeof task.courseId ===
-            "string" &&
+        typeof task.courseId === "string" &&
 
         isValidDateString(
             task.dueDate
@@ -226,11 +204,9 @@ function validEvent(
 
         event &&
 
-        typeof event.id ===
-            "string" &&
+        typeof event.id === "string" &&
 
-        typeof event.topic ===
-            "string" &&
+        typeof event.topic === "string" &&
 
         isValidDateString(
             event.date
@@ -250,14 +226,11 @@ function validGrade(
 
         grade &&
 
-        typeof grade.id ===
-            "string" &&
+        typeof grade.id === "string" &&
 
-        typeof grade.courseId ===
-            "string" &&
+        typeof grade.courseId === "string" &&
 
-        typeof grade.title ===
-            "string" &&
+        typeof grade.title === "string" &&
 
         GRADE_CATEGORIES.includes(
             grade.category
@@ -319,13 +292,6 @@ function loadCollection(
 /* ================================================= */
 /* APPLICATION STATE */
 /* ================================================= */
-
-/*
-    New accounts intentionally start empty.
-
-    The first existing account to use this version
-    automatically receives the old shared data.
-*/
 
 let courses =
     loadCollection(
@@ -469,7 +435,7 @@ export function addCourse(
 
 
 /* ================================================= */
-/* TASKS */ 
+/* TASKS */
 /* ================================================= */
 
 export function getTasks() {
@@ -477,6 +443,27 @@ export function getTasks() {
     return copy(
         tasks
     );
+
+}
+
+
+
+export function getTaskById(
+    taskId
+) {
+
+    const task =
+        tasks.find(
+            item =>
+                item.id === taskId
+        );
+
+
+    return task
+        ? {
+            ...task
+        }
+        : null;
 
 }
 
@@ -535,8 +522,7 @@ export function updateTaskStatus(
     const task =
         tasks.find(
             item =>
-                item.id ===
-                taskId
+                item.id === taskId
         );
 
 
@@ -549,6 +535,45 @@ export function updateTaskStatus(
 
     task.status =
         status;
+
+
+    return saveData(
+        KEYS.tasks,
+        tasks
+    );
+
+}
+
+
+
+/* ================================================= */
+/* DELETE TASK */
+/* ================================================= */
+
+export function deleteTask(
+    taskId
+) {
+
+    const index =
+        tasks.findIndex(
+            task =>
+                task.id === taskId
+        );
+
+
+    if (
+        index === -1
+    ) {
+
+        return false;
+
+    }
+
+
+    tasks.splice(
+        index,
+        1
+    );
 
 
     return saveData(
@@ -647,13 +672,12 @@ export function deleteGrade(
     const index =
         grades.findIndex(
             grade =>
-                grade.id ===
-                gradeId
+                grade.id === gradeId
         );
 
 
     if (
-        index < 0
+        index === -1
     ) {
 
         return false;
@@ -713,8 +737,7 @@ export function getCalendarItemsForDate(
                         event.date,
 
                     description:
-                        event.description ||
-                        "",
+                        event.description || "",
 
                     courseName:
                         "Personal / General"
