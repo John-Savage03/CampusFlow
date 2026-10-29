@@ -370,6 +370,18 @@ export function applyRoleInterface() {
         role
     );
 
+
+    /* Office Hours button: professors only. Hidden in Student view. */
+    const officeButton =
+        document.getElementById("openOfficeModalButton");
+
+    if (officeButton) {
+
+        officeButton.style.display =
+            role === "professor" ? "" : "none";
+
+    }
+
 }
 
 

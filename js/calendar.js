@@ -2,7 +2,9 @@
 
 import {
     getCalendarItemsForDate,
-    addEvent
+    addEvent,
+    getEvents,
+    getActiveRole
 }
 from "./state.js";
 
@@ -13,7 +15,8 @@ import {
     createId,
     cleanText,
     cleanMultilineText,
-    isValidDateString
+    isValidDateString,
+    formatTime
 }
 from "./utils.js";
 
@@ -518,10 +521,157 @@ export function renderCalendar() {
 
 }
 
+/* ================================================= */
+/* OFFICE HOURS & MEETING SCHEDULER */
+/* ================================================= */
+
+/* "14:30" -> 870 (minutes since midnight). Makes times easy to compare. */
+function toMinutes(time) {
+
+    const [hour, minute] = time.split(":").map(Number);
+
+    return hour * 60 + minute;
+
+}
+
+/* 870 -> "14:30" (turns minutes back into a time) */
+function toTime(totalMinutes) {
+
+    const hour = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+    const minute = String(totalMinutes % 60).padStart(2, "0");
+
+    return `${hour}:${minute}`;
+
+}
+
+
+function setupOfficeHours(refreshApplication) {
+
+    const form = document.getElementById("officeForm");
+
+    /* ---------- ACTIVATION: professor clicks the button ---------- */
+    document.getElementById("openOfficeModalButton")?.addEventListener("click", () => {
+
+        /* Only professors can schedule office hours. */
+        if (getActiveRole() !== "professor") {
+
+            showMessage("Switch to Professor view to schedule office hours.", "warning");
+            return;
+
+        }
+
+        form.reset();
+        openModal("officeModal");
+
+    });
+
+
+    /* ---------- ACTION: professor submits the form ---------- */
+    form?.addEventListener("submit", event => {
+
+        event.preventDefault();
+
+        /* INPUT: read everything from the form */
+        const kind = document.getElementById("officeType").value;   /* "office-hours" or "meeting" */
+        const date = document.getElementById("officeDate").value;
+        const startTime = document.getElementById("officeStart").value;
+        const length = Number(document.getElementById("officeLength").value);
+        const student = cleanText(document.getElementById("officeStudent").value, 30);
+        const purpose = cleanText(document.getElementById("officePurpose").value, 80);
+
+        /* Meetings need a student and a purpose */
+        if (kind === "meeting" && (!student || !purpose)) {
+
+            showMessage("Add the student and the purpose for a meeting.", "error");
+            return;
+
+        }
+
+        /* Work out when it starts and ends (in minutes) */
+        const start = toMinutes(startTime);
+        const end = start + length;
+
+        if (end > 24 * 60) {
+
+            showMessage("The time must end before midnight.", "error");
+            return;
+
+        }
+
+        /* RESERVE CHECK: is that time already taken?
+           - a meeting blocks any overlapping time
+           - open office hours cannot overlap other office hours
+           - a meeting CAN be booked inside open office hours */
+        const taken = getEvents().some(item =>
+
+            item.date === date &&
+            item.kind &&
+            start < toMinutes(item.endTime) &&
+            end > toMinutes(item.startTime) &&
+            (item.kind === "meeting" || kind === "office-hours")
+
+        );
+
+        if (taken) {
+
+            showMessage("That time is already reserved. Pick another time.", "error");
+            return;
+
+        }
+
+        /* Build the calendar entry */
+        const endTime = toTime(end);
+
+        const topic = cleanText(
+            kind === "meeting"
+                ? `Meeting: ${student} (${formatTime(startTime)})`
+                : `Office Hours (${formatTime(startTime)})`,
+            60
+        );
+
+        /* This text is what shows when the professor clicks the event */
+        const description = [
+            kind === "meeting" ? "Status: Scheduled" : "Status: Open for student meetings",
+            `Time: ${formatTime(startTime)} - ${formatTime(endTime)}`,
+            student ? `Student: ${student}` : "",
+            purpose ? `Purpose: ${purpose}` : ""
+        ].filter(Boolean).join("\n");
+
+        /* OUTPUT: save it. The calendar already draws saved events,
+           so it appears on the calendar automatically. */
+        addEvent({
+            id: createId("event"),
+            topic,
+            date,
+            description,
+            kind,          /* remembered so we can check conflicts later */
+            startTime,
+            endTime
+        });
+
+        /* Jump the calendar to that month and refresh the page */
+        const [year, month] = date.split("-").map(Number);
+
+        calendarDate = new Date(year, month - 1, 1);
+
+        closeModal("officeModal");
+        refreshApplication();
+
+        showMessage(
+            kind === "meeting" ? "Meeting scheduled." : "Office hours added."
+        );
+
+    });
+
+}
+
 
 export function setupCalendar(
     refreshApplication
 ) {
+
+    /* Start the office hours / meeting scheduler */
+    setupOfficeHours(refreshApplication);
 
     document
         .getElementById(

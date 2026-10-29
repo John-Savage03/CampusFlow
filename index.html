@@ -622,13 +622,29 @@
 
                 </div>
 
-                <button
-                    type="button"
-                    class="primary-button"
-                    id="openEventModalButton"
-                >
-                    + Add Event
-                </button>
+      
+                <!-- Both buttons in one row -->
+                <div style="display: flex; gap: 10px;">
+
+                    <button
+                        type="button"
+                        class="primary-button"
+                        id="openEventModalButton"
+                    >
+                        + Add Event
+                    </button>
+
+                    <!-- NEW: opens the office hours / meeting form -->
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        id="openOfficeModalButton"
+                    >
+                        + Office Hours / Meeting
+                    </button>
+
+                </div>
+
 
             </div>
 
@@ -1914,6 +1930,84 @@
         </div>
 
     </div>
+
+    <!-- ================================================= -->
+    <!-- OFFICE HOURS & MEETING MODAL -->
+    <!-- ================================================= -->
+    <div id="officeModal" class="modal-overlay" aria-hidden="true">
+
+        <div class="modal">
+
+            <div class="modal-header">
+                <div>
+                    <h2>Office Hours / Meeting</h2>
+                    <p>Reserve a time on your schedule.</p>
+                </div>
+
+                <button type="button" class="close-button" data-close-modal="officeModal">
+                    ×
+                </button>
+            </div>
+
+            <form id="officeForm">
+
+                <!-- What are we scheduling? -->
+                <div class="form-group">
+                    <label for="officeType">Type</label>
+                    <select id="officeType">
+                        <option value="office-hours">Open Office Hours</option>
+                        <option value="meeting">Student Meeting</option>
+                    </select>
+                </div>
+
+                <!-- When? -->
+                <div class="form-group">
+                    <label for="officeDate">Date</label>
+                    <input type="date" id="officeDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="officeStart">Start Time</label>
+                    <input type="time" id="officeStart" value="10:00" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="officeLength">Length</label>
+                    <select id="officeLength">
+                        <option value="15">15 minutes</option>
+                        <option value="30" selected>30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="120">2 hours</option>
+                    </select>
+                </div>
+
+                <!-- Student info + purpose (required for meetings only) -->
+                <div class="form-group">
+                    <label for="officeStudent">Student Name / Email (meetings)</label>
+                    <input type="text" id="officeStudent" maxlength="30">
+                </div>
+
+                <div class="form-group">
+                    <label for="officePurpose">Purpose (meetings)</label>
+                    <input type="text" id="officePurpose" maxlength="80">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="secondary-button" data-close-modal="officeModal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="primary-button">
+                        Reserve Time
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
 
     <script
         type="module"
