@@ -3,8 +3,8 @@
 
     Central CampusFlow application data layer.
 
-    Academic information is stored separately
-    for each logged-in account.
+    Academic data is stored separately for
+    each logged-in account.
 */
 
 
@@ -128,7 +128,7 @@ function copy(
 
 
 /* ================================================= */
-/* VALIDATION */
+/* DATA VALIDATION */
 /* ================================================= */
 
 function validCourse(
@@ -139,17 +139,23 @@ function validCourse(
 
         course &&
 
-        typeof course.id === "string" &&
+        typeof course.id ===
+            "string" &&
 
-        typeof course.code === "string" &&
+        typeof course.code ===
+            "string" &&
 
-        typeof course.name === "string" &&
+        typeof course.name ===
+            "string" &&
 
-        typeof course.instructor === "string" &&
+        typeof course.instructor ===
+            "string" &&
 
-        typeof course.days === "string" &&
+        typeof course.days ===
+            "string" &&
 
-        typeof course.time === "string"
+        typeof course.time ===
+            "string"
 
     );
 
@@ -165,8 +171,6 @@ function validTask(
 
         task &&
 
-        typeof task.id === "string" &&
-
         [
             "assignment",
             "exam"
@@ -174,9 +178,14 @@ function validTask(
             task.type
         ) &&
 
-        typeof task.title === "string" &&
+        typeof task.id ===
+            "string" &&
 
-        typeof task.courseId === "string" &&
+        typeof task.title ===
+            "string" &&
+
+        typeof task.courseId ===
+            "string" &&
 
         isValidDateString(
             task.dueDate
@@ -204,9 +213,11 @@ function validEvent(
 
         event &&
 
-        typeof event.id === "string" &&
+        typeof event.id ===
+            "string" &&
 
-        typeof event.topic === "string" &&
+        typeof event.topic ===
+            "string" &&
 
         isValidDateString(
             event.date
@@ -226,11 +237,14 @@ function validGrade(
 
         grade &&
 
-        typeof grade.id === "string" &&
+        typeof grade.id ===
+            "string" &&
 
-        typeof grade.courseId === "string" &&
+        typeof grade.courseId ===
+            "string" &&
 
-        typeof grade.title === "string" &&
+        typeof grade.title ===
+            "string" &&
 
         GRADE_CATEGORIES.includes(
             grade.category
@@ -435,6 +449,46 @@ export function addCourse(
 
 
 /* ================================================= */
+/* DELETE COURSE */
+/* ================================================= */
+
+export function deleteCourse(
+    courseId
+) {
+
+    const index =
+        courses.findIndex(
+            course =>
+                course.id ===
+                courseId
+        );
+
+
+    if (
+        index === -1
+    ) {
+
+        return false;
+
+    }
+
+
+    courses.splice(
+        index,
+        1
+    );
+
+
+    return saveData(
+        KEYS.courses,
+        courses
+    );
+
+}
+
+
+
+/* ================================================= */
 /* TASKS */
 /* ================================================= */
 
@@ -522,7 +576,8 @@ export function updateTaskStatus(
     const task =
         tasks.find(
             item =>
-                item.id === taskId
+                item.id ===
+                taskId
         );
 
 
@@ -737,7 +792,8 @@ export function getCalendarItemsForDate(
                         event.date,
 
                     description:
-                        event.description || "",
+                        event.description ||
+                        "",
 
                     courseName:
                         "Personal / General"

@@ -1,40 +1,273 @@
-/* courses.js - course management */
+/*
+    courses.js
+
+    Handles:
+
+    - displaying courses
+    - adding courses
+    - viewing course details
+    - deleting courses
+*/
+
 
 import {
     getCourses,
+    getCourseById,
     getTasksForCourse,
-    addCourse
+    addCourse,
+    deleteCourse
 }
 from "./state.js";
 
 
 import {
     createId,
-    cleanText,
     formatTime
 }
 from "./utils.js";
 
 
 import {
-    openModal,
-    closeModal,
-    openDetails,
+    openDetails
+}
+from "./details.js";
+
+
+import {
     showMessage
 }
-from "./ui.js";
+from "./feedback.js";
 
 
-function scheduleText(
+
+/* ================================================= */
+/* REFRESH CALLBACK */
+/* ================================================= */
+
+let refreshApplicationCallback =
+    null;
+
+
+
+/* ================================================= */
+/* CLEAN TEXT */
+/* ================================================= */
+
+function cleanText(
+    value,
+    maxLength
+) {
+
+    return String(
+        value || ""
+    )
+        .trim()
+        .replace(
+            /\s+/g,
+            " "
+        )
+        .slice(
+            0,
+            maxLength
+        );
+
+}
+
+
+
+/* ================================================= */
+/* COURSE DETAILS */
+/* ================================================= */
+
+function openCourseDetails(
     course
 ) {
 
-    return course.days === "Online"
-        ? "Online"
-        : `${course.days} • ${formatTime(course.time)}`;
+    const tasks =
+        getTasksForCourse(
+            course.id
+        );
+
+
+    const assignmentCount =
+        tasks.filter(
+            task =>
+                task.type ===
+                "assignment"
+        ).length;
+
+
+    const examCount =
+        tasks.filter(
+            task =>
+                task.type ===
+                "exam"
+        ).length;
+
+
+    openDetails({
+
+        id:
+            course.id,
+
+        source:
+            "course",
+
+        type:
+            "course",
+
+        topic:
+            `${course.code} - ${course.name}`,
+
+        title:
+            `${course.code} - ${course.name}`,
+
+        instructor:
+            course.instructor,
+
+        schedule:
+            course.days === "Online"
+                ? "Online"
+                : `${course.days} • ${formatTime(course.time)}`,
+
+        description:
+            `Instructor: ${course.instructor}\n\nAssignments: ${assignmentCount}\nExams: ${examCount}`
+
+    });
 
 }
 
+
+
+/* ================================================= */
+/* DELETE COURSE */
+/* ================================================= */
+
+function removeCourse(
+    course
+) {
+
+    const coursework =
+        getTasksForCourse(
+            course.id
+        );
+
+
+    /*
+        Do not allow a course to be deleted while
+        assignments or exams are still attached.
+
+        Otherwise those tasks would point to a
+        course that no longer exists.
+    */
+
+    if (
+        coursework.length > 0
+    ) {
+
+        showMessage(
+            `This course still has ${coursework.length} assignment/exam item(s). Remove those first before deleting the course.`,
+            "warning"
+        );
+
+
+        return;
+
+    }
+
+
+    const confirmed =
+        window.confirm(
+            `Are you sure you want to delete ${course.code} - ${course.name}?`
+        );
+
+
+    if (!confirmed) {
+
+        return;
+
+    }
+
+
+    const success =
+        deleteCourse(
+            course.id
+        );
+
+
+    if (!success) {
+
+        showMessage(
+            "Unable to delete the course.",
+            "error"
+        );
+
+
+        return;
+
+    }
+
+
+    /*
+        Refresh every area of CampusFlow so the
+        Dashboard, Assignments, Materials, etc.
+        immediately know the course is gone.
+    */
+
+    if (
+        typeof refreshApplicationCallback ===
+        "function"
+    ) {
+
+        refreshApplicationCallback();
+
+    }
+
+    else {
+
+        renderCourses();
+
+    }
+
+
+    showMessage(
+        `${course.code} deleted.`,
+        "success"
+    );
+
+}
+
+
+
+/* ================================================= */
+/* EMPTY COURSE MESSAGE */
+/* ================================================= */
+
+function createEmptyMessage() {
+
+    const message =
+        document.createElement(
+            "div"
+        );
+
+
+    message.className =
+        "empty-message";
+
+
+    message.textContent =
+        "No courses have been added yet.";
+
+
+    return message;
+
+}
+
+
+
+/* ================================================= */
+/* RENDER COURSES */
+/* ================================================= */
 
 export function renderCourses() {
 
@@ -58,6 +291,30 @@ export function renderCourses() {
         getCourses();
 
 
+
+    /* ================================================= */
+    /* NO COURSES */
+    /* ================================================= */
+
+    if (
+        courses.length === 0
+    ) {
+
+        grid.appendChild(
+            createEmptyMessage()
+        );
+
+
+        return;
+
+    }
+
+
+
+    /* ================================================= */
+    /* COURSE CARDS */
+    /* ================================================= */
+
     courses.forEach(
         course => {
 
@@ -66,6 +323,25 @@ export function renderCourses() {
                     course.id
                 );
 
+
+            const assignmentCount =
+                tasks.filter(
+                    task =>
+                        task.type ===
+                        "assignment"
+                ).length;
+
+
+            const examCount =
+                tasks.filter(
+                    task =>
+                        task.type ===
+                        "exam"
+                ).length;
+
+
+
+            /* ---------------- CARD ---------------- */
 
             const card =
                 document.createElement(
@@ -77,24 +353,39 @@ export function renderCourses() {
                 "course-card";
 
 
-            const accent =
+
+            /* ---------------- HEADER ---------------- */
+
+            const header =
                 document.createElement(
                     "div"
                 );
 
 
-            accent.className =
-                "course-accent";
+            header.className =
+                "course-card-header";
+
+
+
+            const titleArea =
+                document.createElement(
+                    "div"
+                );
 
 
             const code =
                 document.createElement(
-                    "h2"
+                    "span"
                 );
+
+
+            code.className =
+                "course-code";
 
 
             code.textContent =
                 course.code;
+
 
 
             const name =
@@ -107,6 +398,31 @@ export function renderCourses() {
                 course.name;
 
 
+            titleArea.append(
+                code,
+                name
+            );
+
+
+            header.appendChild(
+                titleArea
+            );
+
+
+
+            /* ---------------- DETAILS ---------------- */
+
+            const details =
+                document.createElement(
+                    "div"
+                );
+
+
+            details.className =
+                "course-card-details";
+
+
+
             const instructor =
                 document.createElement(
                     "p"
@@ -117,6 +433,7 @@ export function renderCourses() {
                 `Instructor: ${course.instructor}`;
 
 
+
             const schedule =
                 document.createElement(
                     "p"
@@ -124,94 +441,246 @@ export function renderCourses() {
 
 
             schedule.textContent =
-                scheduleText(
-                    course
-                );
+                course.days === "Online"
+                    ? "Schedule: Online"
+                    : `Schedule: ${course.days} • ${formatTime(course.time)}`;
 
 
-            const footer =
+
+            const coursework =
                 document.createElement(
-                    "div"
+                    "p"
                 );
 
 
-            footer.className =
-                "course-footer";
-
-
-            const count =
-                document.createElement(
-                    "span"
-                );
-
-
-            count.textContent =
-                `${tasks.length} coursework item${
-                    tasks.length === 1
+            coursework.textContent =
+                `${assignmentCount} assignment${
+                    assignmentCount === 1
+                        ? ""
+                        : "s"
+                } • ${examCount} exam${
+                    examCount === 1
                         ? ""
                         : "s"
                 }`;
 
 
-            const view =
+            details.append(
+                instructor,
+                schedule,
+                coursework
+            );
+
+
+
+            /* ================================================= */
+            /* BUTTON AREA */
+            /* ================================================= */
+
+            const actions =
+                document.createElement(
+                    "div"
+                );
+
+
+            actions.className =
+                "course-card-actions";
+
+
+            /*
+                Inline layout is used so you do not
+                have to change existing CSS just to
+                make the feature work.
+            */
+
+            actions.style.display =
+                "flex";
+
+
+            actions.style.alignItems =
+                "center";
+
+
+            actions.style.gap =
+                "10px";
+
+
+            actions.style.flexWrap =
+                "wrap";
+
+
+            actions.style.marginTop =
+                "16px";
+
+
+
+            /* ---------------- VIEW BUTTON ---------------- */
+
+            const viewButton =
                 document.createElement(
                     "button"
                 );
 
 
-            view.type =
+            viewButton.type =
                 "button";
 
 
-            view.textContent =
+            viewButton.className =
+                "secondary-button";
+
+
+            viewButton.textContent =
                 "View Course";
 
 
-            view.addEventListener(
+            viewButton.addEventListener(
                 "click",
-                () => {
+                event => {
 
-                    openDetails({
+                    event.stopPropagation();
 
-                        source:
-                            "course",
 
-                        type:
-                            "course",
-
-                        title:
-                            `${course.code} - ${course.name}`,
-
-                        schedule:
-                            scheduleText(
-                                course
-                            ),
-
-                        instructor:
-                            course.instructor,
-
-                        description:
-                            `${tasks.length} coursework items are currently linked to this course.`
-
-                    });
+                    openCourseDetails(
+                        course
+                    );
 
                 }
             );
 
 
-            footer.append(
-                count,
-                view
+
+            /* ---------------- DELETE BUTTON ---------------- */
+
+            const deleteButton =
+                document.createElement(
+                    "button"
+                );
+
+
+            deleteButton.type =
+                "button";
+
+
+            deleteButton.className =
+                "course-delete-button";
+
+
+            deleteButton.textContent =
+                "Delete Course";
+
+
+            /*
+                Style here so the button works even
+                before adding anything to main.css.
+            */
+
+            deleteButton.style.padding =
+                "8px 14px";
+
+
+            deleteButton.style.border =
+                "1px solid #dc2626";
+
+
+            deleteButton.style.borderRadius =
+                "6px";
+
+
+            deleteButton.style.background =
+                "transparent";
+
+
+            deleteButton.style.color =
+                "#dc2626";
+
+
+            deleteButton.style.fontWeight =
+                "600";
+
+
+            deleteButton.style.cursor =
+                "pointer";
+
+
+            deleteButton.addEventListener(
+                "mouseenter",
+                () => {
+
+                    deleteButton.style.background =
+                        "#dc2626";
+
+
+                    deleteButton.style.color =
+                        "white";
+
+                }
             );
 
 
+            deleteButton.addEventListener(
+                "mouseleave",
+                () => {
+
+                    deleteButton.style.background =
+                        "transparent";
+
+
+                    deleteButton.style.color =
+                        "#dc2626";
+
+                }
+            );
+
+
+            deleteButton.addEventListener(
+                "click",
+                event => {
+
+                    event.stopPropagation();
+
+
+                    removeCourse(
+                        course
+                    );
+
+                }
+            );
+
+
+            actions.append(
+                viewButton,
+                deleteButton
+            );
+
+
+
+            /* ================================================= */
+            /* BUILD CARD */
+            /* ================================================= */
+
             card.append(
-                accent,
-                code,
-                name,
-                instructor,
-                schedule,
-                footer
+                header,
+                details,
+                actions
+            );
+
+
+
+            /*
+                Clicking somewhere else on the card
+                opens the course details.
+            */
+
+            card.addEventListener(
+                "click",
+                () => {
+
+                    openCourseDetails(
+                        course
+                    );
+
+                }
             );
 
 
@@ -225,224 +694,391 @@ export function renderCourses() {
 }
 
 
-function updateTimeRequirement() {
 
-    const days =
+/* ================================================= */
+/* OPEN COURSE MODAL */
+/* ================================================= */
+
+function openCourseModal() {
+
+    const modal =
         document.getElementById(
-            "courseDays"
-        )?.value;
-
-
-    const time =
-        document.getElementById(
-            "courseTime"
+            "courseModal"
         );
 
 
-    if (!time) {
+    if (!modal) {
 
         return;
 
     }
 
 
-    const online =
-        days === "Online";
+    modal.classList.add(
+        "show"
+    );
 
 
-    time.disabled =
-        online;
+    modal.setAttribute(
+        "aria-hidden",
+        "false"
+    );
 
 
-    time.required =
-        !online;
-
-
-    if (online) {
-
-        time.value =
-            "";
-
-    }
+    document.getElementById(
+        "courseCode"
+    )?.focus();
 
 }
 
+
+
+/* ================================================= */
+/* CLOSE COURSE MODAL */
+/* ================================================= */
+
+function closeCourseModal() {
+
+    const modal =
+        document.getElementById(
+            "courseModal"
+        );
+
+
+    if (!modal) {
+
+        return;
+
+    }
+
+
+    modal.classList.remove(
+        "show"
+    );
+
+
+    modal.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    document.getElementById(
+        "courseForm"
+    )?.reset();
+
+}
+
+
+
+/* ================================================= */
+/* SETUP COURSE SYSTEM */
+/* ================================================= */
 
 export function setupCourses(
     refreshApplication
 ) {
 
-    document
-        .getElementById(
-            "courseDays"
-        )
-        ?.addEventListener(
-            "change",
-            updateTimeRequirement
+    /*
+        Save app.js refreshApplication so course
+        deletion and creation can refresh everything.
+    */
+
+    refreshApplicationCallback =
+        refreshApplication;
+
+
+
+    const modal =
+        document.getElementById(
+            "courseModal"
         );
 
 
-    updateTimeRequirement();
-
-
-    document
-        .getElementById(
-            "openCourseModalButton"
-        )
-        ?.addEventListener(
-            "click",
-            () => {
-
-                openModal(
-                    "courseModal"
-                );
-
-            }
-        );
-
-
-    document
-        .getElementById(
+    const form =
+        document.getElementById(
             "courseForm"
-        )
-        ?.addEventListener(
-            "submit",
-            event => {
-
-                event.preventDefault();
+        );
 
 
-                const code =
-                    cleanText(
-                        document.getElementById(
-                            "courseCode"
-                        )?.value,
-                        20
-                    ).toUpperCase();
+
+    /* ================================================= */
+    /* OPEN MODAL */
+    /* ================================================= */
+
+    document.getElementById(
+        "openCourseModalButton"
+    )?.addEventListener(
+        "click",
+        openCourseModal
+    );
 
 
-                const name =
-                    cleanText(
-                        document.getElementById(
-                            "courseName"
-                        )?.value,
-                        80
-                    );
+
+    /* ================================================= */
+    /* CLOSE MODAL BUTTON */
+    /* ================================================= */
+
+    document.getElementById(
+        "closeCourseModalButton"
+    )?.addEventListener(
+        "click",
+        closeCourseModal
+    );
 
 
-                const instructor =
-                    cleanText(
-                        document.getElementById(
-                            "courseInstructor"
-                        )?.value,
-                        80
-                    );
+
+    /* ================================================= */
+    /* CANCEL BUTTON */
+    /* ================================================= */
+
+    document.getElementById(
+        "cancelCourseButton"
+    )?.addEventListener(
+        "click",
+        closeCourseModal
+    );
 
 
-                const days =
+
+    /* ================================================= */
+    /* ADD COURSE */
+    /* ================================================= */
+
+    form?.addEventListener(
+        "submit",
+        event => {
+
+            event.preventDefault();
+
+
+
+            const code =
+                cleanText(
                     document.getElementById(
-                        "courseDays"
-                    )?.value || "";
+                        "courseCode"
+                    )?.value,
+                    20
+                ).toUpperCase();
 
 
-                const time =
-                    days === "Online"
-                        ? ""
-                        : (
-                            document.getElementById(
-                                "courseTime"
-                            )?.value || ""
-                        );
-
-
-                if (
-                    !code ||
-                    !name ||
-                    !instructor
-                ) {
-
-                    return showMessage(
-                        "Complete all required course fields.",
-                        "error"
-                    );
-
-                }
-
-
-                if (
-                    days !== "Online" &&
-                    !/^([01]\d|2[0-3]):[0-5]\d$/.test(
-                        time
-                    )
-                ) {
-
-                    return showMessage(
-                        "Choose a valid meeting time.",
-                        "error"
-                    );
-
-                }
-
-
-                if (
-                    getCourses().some(
-                        course =>
-                            course.code.toLowerCase() ===
-                            code.toLowerCase()
-                    )
-                ) {
-
-                    return showMessage(
-                        "That course code already exists.",
-                        "warning"
-                    );
-
-                }
-
-
-                addCourse({
-
-                    id:
-                        createId(
-                            "course"
-                        ),
-
-                    code,
-
-                    name,
-
-                    instructor,
-
-                    days,
-
-                    time
-
-                });
-
-
-                document
-                    .getElementById(
-                        "courseForm"
-                    )
-                    .reset();
-
-
-                updateTimeRequirement();
-
-
-                closeModal(
-                    "courseModal"
+            const name =
+                cleanText(
+                    document.getElementById(
+                        "courseName"
+                    )?.value,
+                    80
                 );
 
 
-                refreshApplication();
+            const instructor =
+                cleanText(
+                    document.getElementById(
+                        "courseInstructor"
+                    )?.value,
+                    80
+                );
 
+
+            const days =
+                document.getElementById(
+                    "courseDays"
+                )?.value || "";
+
+
+            const time =
+                document.getElementById(
+                    "courseTime"
+                )?.value || "";
+
+
+
+            /* ---------------- VALIDATION ---------------- */
+
+            if (!code) {
 
                 showMessage(
-                    "Course added."
+                    "Course code is required.",
+                    "error"
                 );
 
+
+                return;
+
             }
-        );
+
+
+            if (!name) {
+
+                showMessage(
+                    "Course name is required.",
+                    "error"
+                );
+
+
+                return;
+
+            }
+
+
+            if (!instructor) {
+
+                showMessage(
+                    "Instructor is required.",
+                    "error"
+                );
+
+
+                return;
+
+            }
+
+
+            if (!days) {
+
+                showMessage(
+                    "Choose a meeting schedule.",
+                    "error"
+                );
+
+
+                return;
+
+            }
+
+
+            if (
+                days !== "Online" &&
+                !time
+            ) {
+
+                showMessage(
+                    "Choose a meeting time.",
+                    "error"
+                );
+
+
+                return;
+
+            }
+
+
+
+            /* ================================================= */
+            /* PREVENT DUPLICATE COURSE CODE */
+            /* ================================================= */
+
+            const duplicate =
+                getCourses().some(
+                    course =>
+                        course.code
+                            .toLowerCase() ===
+                        code.toLowerCase()
+                );
+
+
+            if (duplicate) {
+
+                showMessage(
+                    `${code} is already in your course list.`,
+                    "warning"
+                );
+
+
+                return;
+
+            }
+
+
+
+            /* ================================================= */
+            /* CREATE COURSE */
+            /* ================================================= */
+
+            const newCourse = {
+
+                id:
+                    createId(
+                        "course"
+                    ),
+
+                code,
+
+                name,
+
+                instructor,
+
+                days,
+
+                /*
+                    Keep a time value even for Online
+                    courses so existing validation
+                    continues to accept the object.
+                */
+
+                time:
+                    time || "00:00"
+
+            };
+
+
+            const saved =
+                addCourse(
+                    newCourse
+                );
+
+
+            closeCourseModal();
+
+
+
+            if (
+                typeof refreshApplicationCallback ===
+                "function"
+            ) {
+
+                refreshApplicationCallback();
+
+            }
+
+            else {
+
+                renderCourses();
+
+            }
+
+
+            showMessage(
+                saved
+                    ? "Course added."
+                    : "Course added, but browser storage was unavailable.",
+                saved
+                    ? "success"
+                    : "warning"
+            );
+
+        }
+    );
+
+
+
+    /* ================================================= */
+    /* CLOSE MODAL BY CLICKING BACKDROP */
+    /* ================================================= */
+
+    modal?.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target === modal
+            ) {
+
+                closeCourseModal();
+
+            }
+
+        }
+    );
 
 }
