@@ -355,7 +355,28 @@ function renderStudentSummary() {
                 "Completed"
         ).length;
 
+    /* ---------------- PROGRESS BAR ---------------- */
 
+    // how many tasks are completed out of all tasks
+    const completedTotal = tasks.filter(task => task.status === "Completed").length;
+
+    let percentDone = 0;
+
+    if (tasks.length > 0) {
+        percentDone = Math.round(completedTotal / tasks.length * 100);
+    }
+
+    const progressBar = document.getElementById("studentProgressBar");
+    const progressText = document.getElementById("studentProgressText");
+
+    if (progressBar) {
+        progressBar.value = percentDone;
+    }
+
+    if (progressText) {
+        progressText.textContent =
+            completedTotal + " of " + tasks.length + " done (" + percentDone + "%)";
+    }
 
     /* ---------------- NEXT DEADLINE ---------------- */
 

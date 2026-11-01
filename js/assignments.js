@@ -426,6 +426,19 @@ export function renderAssignments() {
 
     }
 
+    /* ---------------- SEARCH ---------------- */
+
+    // what the user typed in the search box
+    const searchBox = document.getElementById("taskSearch");
+    const searchText = searchBox ? searchBox.value.trim().toLowerCase() : "";
+
+    if (searchText !== "") {
+
+        tasks = tasks.filter(task =>
+            task.title.toLowerCase().includes(searchText)
+        );
+
+    }
 
     /* ---------------- SORT BY DATE ---------------- */
 
@@ -939,6 +952,13 @@ export function setupAssignments(
 /* ================================================= */
 /* FILTERS */
 /* ================================================= */
+
+    
+    // search box: update the table every time a letter is typed
+    document
+        .getElementById("taskSearch")
+        ?.addEventListener("input", renderAssignments);
+
     [
         "taskCourseFilter",
         "taskTypeFilter",
