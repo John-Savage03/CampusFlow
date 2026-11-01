@@ -2,6 +2,7 @@
 
 import {
     getCalendarItemsForDate,
+    updateEvent,
     addEvent,
     getEvents,
     getActiveRole
@@ -665,6 +666,331 @@ function setupOfficeHours(refreshApplication) {
 
 }
 
+/* ================================================= */
+/* SMART SCHEDULE ADJUSTMENT */
+/* ================================================= */
+
+// When the user changes the time of an event and it overlaps a
+// study or work session, we show open times the session can move to.
+
+// the earliest and latest times we will suggest (in minutes)
+const START_OF_DAY = 8 * 60;    // 8:00 AM
+const END_OF_DAY = 21 * 60;     // 9:00 PM
+const DAYS_TO_SEARCH = 7;       // how many days ahead we look
+
+
+// true if the event has both a start time and an end time
+function hasTimes(item) {
+    return item.startTime && item.endTime;
+}
+
+
+// true if two events are on the same day and their times overlap
+function timesOverlap(a, b) {
+
+    if (a.date !== b.date) {
+        return false;
+    }
+
+    return toMinutes(a.startTime) < toMinutes(b.endTime) &&
+           toMinutes(a.endTime) > toMinutes(b.startTime);
+
+}
+
+
+// makes the new title, like "Study: Midterm (4:00 PM)"
+function makeTitle(oldTitle, startTime) {
+
+    let name = oldTitle;
+    const spot = oldTitle.lastIndexOf(" (");
+
+    // remove the old time at the end if there is one
+    if (spot !== -1 && oldTitle.endsWith(")")) {
+        name = oldTitle.slice(0, spot);
+    }
+
+    return name.slice(0, 48) + " (" + formatTime(startTime) + ")";
+
+}
+
+
+// makes the new description with the new time in it
+function makeDescription(oldText, startTime, endTime) {
+
+    const lines = (oldText || "").split("\n");
+    const keep = [];
+
+    // keep every line except the old time line
+    for (let i = 0; i < lines.length; i++) {
+
+        const line = lines[i];
+        const isTimeLine = line.startsWith("Time:") ||
+            (line.includes(" - ") && (line.includes("AM") || line.includes("PM")));
+
+        if (line !== "" && !isTimeLine) {
+            keep.push(line);
+        }
+
+    }
+
+    keep.push("Time: " + formatTime(startTime) + " - " + formatTime(endTime));
+
+    return keep.join("\n");
+
+}
+
+
+// finds open times (same length as the session) over the next few days
+function findOpenTimes(session) {
+
+    const length = toMinutes(session.endTime) - toMinutes(session.startTime);
+
+    // every other event with a time counts as busy
+    const busy = [];
+    const allEvents = getEvents();
+
+    for (let i = 0; i < allEvents.length; i++) {
+        if (hasTimes(allEvents[i]) && allEvents[i].id !== session.id) {
+            busy.push(allEvents[i]);
+        }
+    }
+
+    const parts = session.date.split("-").map(Number);
+    const now = new Date();
+    const found = [];
+
+    // go through each day, starting with the session's own day
+    for (let dayNumber = 0; dayNumber <= DAYS_TO_SEARCH; dayNumber++) {
+
+        const day = new Date(parts[0], parts[1] - 1, parts[2] + dayNumber);
+        const dateString = createDateString(day.getFullYear(), day.getMonth(), day.getDate());
+        let foundToday = 0;
+
+        // try a start time every 30 minutes
+        for (let start = START_OF_DAY; start + length <= END_OF_DAY; start += 30) {
+
+            // only suggest 2 times per day and 6 total
+            if (foundToday >= 2 || found.length >= 6) {
+                break;
+            }
+
+            // skip times that already passed
+            const slotDate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, start);
+            if (slotDate < now) {
+                continue;
+            }
+
+            const slot = {
+                date: dateString,
+                startTime: toTime(start),
+                endTime: toTime(start + length)
+            };
+
+            // skip it if it overlaps anything else
+            let isFree = true;
+
+            for (let i = 0; i < busy.length; i++) {
+                if (timesOverlap(busy[i], slot)) {
+                    isFree = false;
+                }
+            }
+
+            if (isFree) {
+                found.push(slot);
+                foundToday++;
+            }
+
+        }
+
+    }
+
+    return found;
+
+}
+
+
+// shows the open times for the first session in the list
+function showNewTimes(sessions, conflictEvent, refreshApplication) {
+
+    const message = document.getElementById("adjustMessage");
+    const list = document.getElementById("adjustOptions");
+
+    // no sessions left, so we are done
+    if (sessions.length === 0) {
+        closeModal("adjustModal");
+        refreshApplication();
+        return;
+    }
+
+    const session = sessions[0];
+    const rest = sessions.slice(1);
+    const options = findOpenTimes(session);
+
+    if (options.length > 0) {
+        message.textContent = '"' + session.topic + '" now overlaps with "' +
+            conflictEvent.topic + '". Pick a new time:';
+    } else {
+        message.textContent = '"' + session.topic + '" now overlaps with "' +
+            conflictEvent.topic + '". No open times were found in the next ' +
+            DAYS_TO_SEARCH + " days.";
+    }
+
+    list.replaceChildren();
+
+    // make one button for each open time
+    options.forEach(slot => {
+
+        const parts = slot.date.split("-").map(Number);
+        const dayText = new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric"
+        });
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "primary-button";
+        button.textContent = dayText + "  |  " + formatTime(slot.startTime) +
+            " - " + formatTime(slot.endTime);
+
+        // when clicked, move the session to this time
+        button.addEventListener("click", () => {
+
+            updateEvent(session.id, {
+                date: slot.date,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                topic: makeTitle(session.topic, slot.startTime),
+                description: makeDescription(session.description, slot.startTime, slot.endTime)
+            });
+
+            showMessage("Session moved.");
+            showNewTimes(rest, conflictEvent, refreshApplication);
+
+        });
+
+        list.appendChild(button);
+
+    });
+
+    // button to leave the session where it is
+    const keepButton = document.createElement("button");
+    keepButton.type = "button";
+    keepButton.className = "secondary-button";
+    keepButton.textContent = "Keep original time";
+
+    keepButton.addEventListener("click", () => {
+        showNewTimes(rest, conflictEvent, refreshApplication);
+    });
+
+    list.appendChild(keepButton);
+
+    openModal("adjustModal");
+
+}
+
+
+function setupSmartSchedule(refreshApplication) {
+
+    const form = document.getElementById("editEventForm");
+    let editingId = null;   // which event is being edited
+
+    // user clicks "Edit Time" in the details window
+    document.getElementById("editEventTimeButton")?.addEventListener("click", event => {
+
+        const id = event.currentTarget.dataset.eventId;
+        const item = getEvents().find(e => e.id === id);
+
+        if (!item) {
+            return;
+        }
+
+        editingId = item.id;
+
+        // fill the form with the event's current info
+        document.getElementById("editEventName").textContent = item.topic;
+        document.getElementById("editDate").value = item.date;
+        document.getElementById("editStart").value = item.startTime || "09:00";
+        document.getElementById("editEnd").value = item.endTime || "10:00";
+        document.getElementById("editKind").value = "";
+
+        closeModal("detailsModal");
+        openModal("editEventModal");
+
+    });
+
+    // user saves the new time
+    form?.addEventListener("submit", event => {
+
+        event.preventDefault();
+
+        const item = getEvents().find(e => e.id === editingId);
+
+        if (!item) {
+            return;
+        }
+
+        const newDate = document.getElementById("editDate").value;
+        const newStart = document.getElementById("editStart").value;
+        const newEnd = document.getElementById("editEnd").value;
+        const chosenKind = document.getElementById("editKind").value;
+
+        if (toMinutes(newEnd) <= toMinutes(newStart)) {
+            showMessage("The end time must be after the start time.", "error");
+            return;
+        }
+
+        // if they did not pick a type, keep the old one
+        let newKind = chosenKind;
+
+        if (newKind === "") {
+            newKind = item.kind || "busy";
+        }
+
+        const changes = {
+            date: newDate,
+            startTime: newStart,
+            endTime: newEnd,
+            kind: newKind,
+            topic: makeTitle(item.topic, newStart),
+            description: makeDescription(item.description, newStart, newEnd)
+        };
+
+        updateEvent(item.id, changes);
+
+        // this is the event with its new info
+        const editedEvent = getEvents().find(e => e.id === item.id);
+
+        // find study/work sessions that now overlap the edited event
+        const affected = [];
+        const allEvents = getEvents();
+
+        for (let i = 0; i < allEvents.length; i++) {
+
+            const other = allEvents[i];
+            const isSession = other.kind === "study" || other.kind === "work";
+
+            if (other.id !== editedEvent.id && isSession &&
+                hasTimes(other) && timesOverlap(other, editedEvent)) {
+                affected.push(other);
+            }
+
+        }
+
+        closeModal("editEventModal");
+        refreshApplication();
+
+        if (affected.length === 0) {
+            showMessage("Event updated. No conflicts found.");
+            return;
+        }
+
+        showMessage("Event updated, but it conflicts with a session.", "warning");
+        showNewTimes(affected, editedEvent, refreshApplication);
+
+    });
+
+}
 
 export function setupCalendar(
     refreshApplication
@@ -672,6 +998,9 @@ export function setupCalendar(
 
     /* Start the office hours / meeting scheduler */
     setupOfficeHours(refreshApplication);
+
+        // smart schedule adjustment
+    setupSmartSchedule(refreshApplication);
 
     document
         .getElementById(

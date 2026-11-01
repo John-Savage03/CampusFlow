@@ -652,7 +652,20 @@ export function getEvents() {
 
 }
 
+// changes part of an event that already exists
+export function updateEvent(id, changes) {
 
+    const event = events.find(item => item.id === id);
+
+    if (!event) {
+        return false;
+    }
+
+    Object.assign(event, changes);
+
+    return saveData(KEYS.events, events);
+
+}
 
 export function addEvent(
     event

@@ -246,6 +246,20 @@ export function openDetails(
         item.description ||
         "No description provided.";
 
+            // show the Edit Time button only for calendar events
+    const editButton = document.getElementById("editEventTimeButton");
+
+    if (editButton) {
+
+        if (item.source === "event") {
+            editButton.style.display = "";
+        } else {
+            editButton.style.display = "none";
+        }
+
+        editButton.dataset.eventId = item.id || "";
+
+    }
 
     openModal(
         "detailsModal"

@@ -890,7 +890,10 @@ function setupStudyPlanner(refreshApplication) {
                 topic,
                 date: checkbox.value,
                 description:
-                    `Study session for ${studyTask.title}\n${formatTime(startTime)} - ${formatTime(endTime)}\nDue ${formatDate(studyTask.dueDate)}`
+                    `Study session for ${studyTask.title}\n${formatTime(startTime)} - ${formatTime(endTime)}\nDue ${formatDate(studyTask.dueDate)}`,
+                kind: "study",
+                startTime: startTime,
+                endTime: endTime
             });
 
             added++;

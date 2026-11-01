@@ -1875,6 +1875,18 @@
                 </div>
 
             </div>
+            
+            <!-- Edit Time button (only shows for calendar events) -->
+            <div class="modal-actions">
+                <button
+                    type="button"
+                    class="secondary-button"
+                    id="editEventTimeButton"
+                    style="display: none;"
+                >
+                    Edit Time
+                </button>
+            </div>
 
         </div>
 
@@ -2008,6 +2020,99 @@
 
     </div>
 
+        <!-- ================================================= -->
+    <!-- SMART SCHEDULE: EDIT EVENT TIME -->
+    <!-- ================================================= -->
+
+    <div id="editEventModal" class="modal-overlay" aria-hidden="true">
+
+        <div class="modal">
+
+            <div class="modal-header">
+                <div>
+                    <h2>Edit Event Time</h2>
+                    <p id="editEventName"></p>
+                </div>
+
+                <button type="button" class="close-button" data-close-modal="editEventModal">
+                    ×
+                </button>
+            </div>
+
+            <form id="editEventForm">
+
+                <div class="form-group">
+                    <label for="editDate">Date</label>
+                    <input type="date" id="editDate" required>
+                </div>
+
+                <div class="form-row">
+
+                    <div class="form-group">
+                        <label for="editStart">Start Time</label>
+                        <input type="time" id="editStart" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editEnd">End Time</label>
+                        <input type="time" id="editEnd" required>
+                    </div>
+
+                </div>
+
+                <div class="form-group">
+                    <label for="editKind">This event is a...</label>
+                    <select id="editKind">
+                        <option value="">Keep as is</option>
+                        <option value="busy">Fixed event (shift, practice, meeting)</option>
+                        <option value="work">Work session (can be moved)</option>
+                        <option value="study">Study session (can be moved)</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="secondary-button" data-close-modal="editEventModal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="primary-button">
+                        Save Changes
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- SMART SCHEDULE: SUGGESTED NEW TIMES -->
+    <!-- ================================================= -->
+
+    <div id="adjustModal" class="modal-overlay" aria-hidden="true">
+
+        <div class="modal">
+
+            <div class="modal-header">
+                <div>
+                    <h2>Schedule Conflict</h2>
+                    <p id="adjustMessage"></p>
+                </div>
+
+                <button type="button" class="close-button" data-close-modal="adjustModal">
+                    ×
+                </button>
+            </div>
+
+            <div
+                id="adjustOptions"
+                style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;"
+            ></div>
+
+        </div>
+
+    </div>
 
     <script
         type="module"
