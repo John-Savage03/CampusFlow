@@ -69,6 +69,10 @@ import {
 }
 from "./dashboard.js";
 
+import { 
+    getTasks 
+} 
+from "./state.js";
 
 
 /* ================================================= */
@@ -342,6 +346,90 @@ async function startCampusFlow() {
 
     refreshApplication();
 
+    //notification
+
+    runSafely("Assignment reminders", () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        const reminders = getTasks().filter(task => {
+            if (!task.dueDate || task.status === "Completed") {
+                return false;
+            }
+
+            const due = new Date(task.dueDate + "T00:00:00");
+
+            return due >= today && due <= tomorrow;
+        });
+        
+        //notification popup
+        if (reminders.length > 0) {
+        const box = document.createElement("div");
+
+        box.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #DBEAFE;
+            color: #172554;
+            padding: 20px;
+            border: 2px solid #2563EB;
+            border-radius: 8px;
+            z-index: 9999;
+            max-width: 320px;
+            box-shadow: 0 4px 12px #0002;
+        `;
+
+        const title = document.createElement("h3");
+        title.textContent =
+            `Assignment Reminders (${reminders.length})`;
+        box.appendChild(title);
+
+        const todayTasks = reminders.filter(task =>
+            task.dueDate === localDate(today)
+        );
+
+        const tomorrowTasks = reminders.filter(task =>
+            task.dueDate === localDate(tomorrow)
+        );
+
+        function localDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function addGroup(label, tasks) {
+            if (tasks.length === 0) return;
+
+            const heading = document.createElement("h4");
+            heading.textContent = label;
+            box.appendChild(heading);
+
+            tasks.forEach(task => {
+                const item = document.createElement("p");
+                item.textContent = "• " + task.title;
+                item.style.margin = "6px 0";
+                box.appendChild(item);
+            });
+        }
+
+        addGroup("Due Today", todayTasks);
+        addGroup("Due Tomorrow", tomorrowTasks);
+
+        const close = document.createElement("button");
+        close.textContent = "OK";
+        close.style.marginTop = "12px";
+        close.onclick = () => box.remove();
+
+        box.appendChild(close);
+        document.body.appendChild(box);
+    }
+    });
 }
 
 

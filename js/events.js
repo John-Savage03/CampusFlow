@@ -61,7 +61,6 @@ import {
 from "./feedback.js";
 
 
-
 /* ================================================= */
 /* OPEN EVENT MODAL */
 /* ================================================= */
@@ -202,6 +201,7 @@ function closeEventModal() {
 export function setupEventSystem(
     refreshApplication
 ) {
+
 
     const modal =
         document.getElementById(
