@@ -399,12 +399,13 @@ export function setActiveRole(
 /* COURSES */
 /* ================================================= */
 
-export function getCourses() {
+//return active courses unless requested
+export function getCourses(includeArchived = false) {
+    if (includeArchived) {
+        return copy(courses);
+    }
 
-    return copy(
-        courses
-    );
-
+    return copy(courses.filter(course => !course.archived));
 }
 
 
@@ -492,12 +493,15 @@ export function deleteCourse(
 /* TASKS */
 /* ================================================= */
 
+//return coursework belonging to active courses
 export function getTasks() {
+    return copy(tasks.filter(task => {
+        const course = courses.find(
+            course => course.id === task.courseId
+        );
 
-    return copy(
-        tasks
-    );
-
+        return !course || !course.archived;
+    }));
 }
 
 
@@ -652,7 +656,7 @@ export function getEvents() {
 
 }
 
-// changes part of an event that already exists
+//changes part of an event that already exists
 export function updateEvent(id, changes) {
 
     const event = events.find(item => item.id === id);
@@ -689,12 +693,15 @@ export function addEvent(
 /* GRADES */
 /* ================================================= */
 
+//return grades belonging to active courses
 export function getGrades() {
+    return copy(grades.filter(grade => {
+        const course = courses.find(
+            course => course.id === grade.courseId
+        );
 
-    return copy(
-        grades
-    );
-
+        return !course || !course.archived;
+    }));
 }
 
 
@@ -814,9 +821,9 @@ export function getCalendarItemsForDate(
                 })
             );
 
-
+    //display corsework from active courses
     const taskItems =
-        tasks
+        getTasks()
             .filter(
                 task =>
                     task.dueDate ===
@@ -859,7 +866,10 @@ export function getCalendarItemsForDate(
                         courseName:
                             course
                                 ? `${course.code} - ${course.name}`
-                                : "Unknown Course"
+                                : "Unknown Course",
+
+                            //include course color for calendar items
+                            color: course ? course.color || "#2d6aec" : "#2d6aec"
 
                     };
 
@@ -872,4 +882,29 @@ export function getCalendarItemsForDate(
         ...taskItems
     ];
 
+}
+
+//updates an existing assignment
+export function updateTask(id, changes) {
+    const task = tasks.find(task => task.id === id);
+
+    //stops if the assignmnet does not exist
+    if (!task) return false;
+
+    //apply info
+    Object. assign(task, changes);
+
+    //save
+    return saveData(KEYS.tasks, tasks);
+}
+
+//updates existing course(s)
+export function updateCourse(id, changes){
+    const course = courses.find(course => course.id === id);
+
+    if (!course) return false;
+
+    Object.assign(course, changes);
+
+    return saveData(KEYS.courses, courses);
 }

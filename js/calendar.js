@@ -245,6 +245,11 @@ function createItemButton(
     button.textContent =
         item.title;
 
+        //display course color on assignments and exams
+        if (item.color) {
+            button.style.borderLeft = "4px solid " + item.color;
+        }
+
 
     button.title =
         item.title;

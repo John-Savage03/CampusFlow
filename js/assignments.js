@@ -19,6 +19,7 @@ import {
     getTasks,
     getCourseById,
     addTask,
+    updateTask,
     updateTaskStatus,
     deleteTask,
     TASK_STATUSES,
@@ -66,6 +67,8 @@ from "./ui.js";
 
 let refreshApplicationCallback =
     null;
+
+let editingTaskId = null; //traks assignment being edited
 
 
 
@@ -268,7 +271,29 @@ function taskDetails(
 
 }
 
+//open assignment form with the extisting info
+function editTask(task){
+    editingTaskId = task.id;
 
+    populateCourseSelectors();
+
+    //fill in form with current assignment details
+    document.getElementById("taskType").value = task.type;
+    document.getElementById("taskCourse").value = task.courseId;
+    document.getElementById("taskTitle").value = task.title;
+    document.getElementById("taskDueDate").value = task.dueDate;
+    document.getElementById("taskPriority").value = task.priority;
+    document.getElementById("taskStatus").value = task.status;
+    document.getElementById("taskDescription").value = task.description || "";
+
+    //change the form to an edit mode
+    document.getElementById("taskModalTitle").textContent = "Edit Coursework";
+    document.getElementById("taskSubmitButton").textContent = "Save Changes";
+
+    //Display assignment form
+    openModal("taskModal");
+
+}
 
 /* ================================================= */
 /* REMOVE TASK */
@@ -428,7 +453,7 @@ export function renderAssignments() {
 
     /* ---------------- SEARCH ---------------- */
 
-    // what the user typed in the search box
+    //what the user typed in the search box
     const searchBox = document.getElementById("taskSearch");
     const searchText = searchBox ? searchBox.value.trim().toLowerCase() : "";
 
@@ -547,28 +572,24 @@ export function renderAssignments() {
 
             /* ---------------- BASIC CELLS ---------------- */
 
+            //create the course cell with color
+            const courseCell = cell(
+                course ? course.code : "Unknown Course"
+            );
+
+            //display the course color next to name
+            if (course) {
+                courseCell.style.borderLeft =
+                    "4px solid " + (course.color || "#2d6aec");
+            }
+
+            // Add assignment info to table
             row.append(
                 typeCell,
-
-                cell(
-                    task.title
-                ),
-
-                cell(
-                    course
-                        ? course.code
-                        : "Unknown Course"
-                ),
-
-                cell(
-                    formatDate(
-                        task.dueDate
-                    )
-                ),
-
-                cell(
-                    task.priority
-                )
+                cell(task.title),
+                courseCell,
+                cell(formatDate(task.dueDate)),
+                cell(task.priority)
             );
 
 
@@ -734,8 +755,22 @@ export function renderAssignments() {
             );
 
 
+            //create button for edit assignment
+            const editButton = document.createElement("button");
+            editButton.type = "button";
+            editButton.className = "secondary-button";
+            editButton.textContent = "Edit";
+
+            //open the selected assignment for editing
+            editButton.addEventListener("click", event => {
+                event.stopPropagation();
+                editTask(task);
+            });
+
+            //add buttons and status selector to assignment
             controls.append(
                 select,
+                editButton,
                 removeButton
             );
 
@@ -954,7 +989,7 @@ export function setupAssignments(
 /* ================================================= */
 
     
-    // search box: update the table every time a letter is typed
+    //search box: update the table every time a letter is typed
     document
         .getElementById("taskSearch")
         ?.addEventListener("input", renderAssignments);
@@ -991,6 +1026,14 @@ export function setupAssignments(
         ?.addEventListener(
             "click",
             () => {
+
+                editingTaskId = null; //clear selected assignments
+
+                //reset form back to add mode
+                document.getElementById("taskForm").reset();
+                document.getElementById("taskModalTitle").textContent = "Add Coursework";
+                document.getElementById("taskSubmitButton").textContent = "Add";
+
 
                 populateCourseSelectors();
 
@@ -1152,29 +1195,22 @@ export function setupAssignments(
                 /* ADD TASK */
                 /* ================================================= */
 
-                const saved =
-                    addTask({
+                //store the assignment info
+                const taskData = {
+                    id: editingTaskId || createId("task"),
+                    type,
+                    courseId,
+                    title,
+                    dueDate,
+                    priority,
+                    status,
+                    description
+                };
 
-                        id:
-                            createId(
-                                "task"
-                            ),
-
-                        type,
-
-                        courseId,
-
-                        title,
-
-                        dueDate,
-
-                        priority,
-
-                        status,
-
-                        description
-
-                    });
+                //update existing assignment or create a new one
+                const saved = editingTaskId
+                    ? updateTask(editingTaskId, taskData)
+                    : addTask(taskData);
 
 
                 if (!saved) {
@@ -1208,10 +1244,14 @@ export function setupAssignments(
                 refreshEverything();
 
 
+                //display message
                 showMessage(
-                    "Coursework added.",
+                    editingTaskId ? "Coursework updated." : "Coursework added.",
                     "success"
                 );
+
+                //clear editing mode after saving
+                editingTaskId = null;
 
             }
         );

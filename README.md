@@ -270,3 +270,23 @@ Run the project through a local web server (such as VS Code Live Server), not by
 - The app opens the matching view after login.
 - Student and professor views provide different academic information.
 - Demo account and application data are stored in the browser.
+
+## Assignment and Course editing
+
+-add existing assignments, exams, and courses without deleting/recreating them
+
+## Assignment Reminders
+
+-shows what is needing to be done today and/or tommorrow
+
+## Course Archiving
+
+-archive completed courses later without losing corsework or grades
+
+## Course Color Coding
+
+- customization for colors to coureses for better identification in course hub, assignment tracker, and calander 
+
+## Semester Organization
+
+-organize courses into expandable smester folders and move courses between smesters

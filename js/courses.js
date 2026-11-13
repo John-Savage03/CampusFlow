@@ -15,6 +15,7 @@ import {
     getCourseById,
     getTasksForCourse,
     addCourse,
+    updateCourse,
     deleteCourse
 }
 from "./state.js";
@@ -47,6 +48,7 @@ from "./feedback.js";
 let refreshApplicationCallback =
     null;
 
+let editingCourseId = null; //tracks courses edited
 
 
 /* ================================================= */
@@ -286,9 +288,20 @@ export function renderCourses() {
 
     grid.replaceChildren();
 
+    //display vertically semester folders
+    grid.style.display = "block";
 
-    const courses =
-        getCourses();
+    //store semester folders
+    const semesterFolders = new Map();
+
+    //checks if the user wants to view archived courses
+    const showArchived =
+        document.getElementById("showArchivedCourses").checked;
+
+    //display active courses or archived courses
+    const courses = getCourses(true).filter(course =>
+        Boolean(course.archived) === showArchived
+    );
 
 
 
@@ -300,9 +313,14 @@ export function renderCourses() {
         courses.length === 0
     ) {
 
-        grid.appendChild(
-            createEmptyMessage()
-        );
+       //display message if there are no courses to show
+        const message = createEmptyMessage();
+
+        if (showArchived) {
+            message.textContent = "No archived courses.";
+        }
+
+        grid.appendChild(message);
 
 
         return;
@@ -352,6 +370,9 @@ export function renderCourses() {
             card.className =
                 "course-card";
 
+                // Display the selected color on the course card
+                card.style.borderLeft =
+                    "6px solid " + (course.color || "#2d6aec");
 
 
             /* ---------------- HEADER ---------------- */
@@ -648,10 +669,57 @@ export function renderCourses() {
             );
 
 
-            actions.append(
-                viewButton,
-                deleteButton
-            );
+            //create edit course button
+            const editButton = document.createElement("button");
+            editButton.type = "button";
+            editButton.className = "secondary-button";
+            editButton.textContent = "Edit";
+
+            //opens course for editing
+            editButton.addEventListener("click", event => {
+                event.stopPropagation();
+                editCourse(course);
+            });
+
+            // Create a button to archive or restore the course
+const archiveButton = document.createElement("button");
+archiveButton.type = "button";
+archiveButton.className = "secondary-button";
+
+// Change the button text based on the course status
+archiveButton.textContent =
+    course.archived ? "Restore" : "Archive";
+
+// Archive or restore the selected course
+archiveButton.addEventListener("click", event => {
+    event.stopPropagation();
+
+    const saved = updateCourse(course.id, {
+        archived: !course.archived
+    });
+
+    // Check if the change was saved
+    if (!saved) {
+        return showMessage("Unable to save course.", "error");
+    }
+
+    // Refresh the application after the change
+    refreshApplicationCallback();
+
+        //display a confirmation message
+        showMessage(
+            course.archived ? "Course restored." : "Course archived.",
+            "success"
+        );
+    });
+
+    //add all buttons to the course card
+    actions.append(
+        viewButton,
+        editButton,
+        archiveButton,
+        deleteButton
+    );
 
 
 
@@ -684,9 +752,40 @@ export function renderCourses() {
             );
 
 
-            grid.appendChild(
-                card
-            );
+            //get semester for current course
+            const semester = course.semester || "Unassigned";
+            const semesterKey = semester.toLowerCase();
+
+            //create semester folder if one doesn't exist
+            if (!semesterFolders.has(semesterKey)) {
+
+                //expandable folder
+                const folder = document.createElement("details");
+                folder.open = true;
+                folder.style.marginBottom = "20px";
+
+                //folder heading
+                const heading = document.createElement("summary");
+                heading.textContent = semester;
+                heading.style.fontWeight = "bold";
+                heading.style.fontSize = "18px";
+                heading.style.cursor = "pointer";
+                heading.style.padding = "12px";
+
+                //grid to hold courses
+                const folderGrid = document.createElement("div");
+                folderGrid.className = "course-grid";
+
+                //add heading and course grid to folder
+                folder.append(heading, folderGrid);
+                grid.appendChild(folder);
+
+                //save the folder
+                semesterFolders.set(semesterKey, folderGrid);
+            }
+
+            //add course to semester folder
+            semesterFolders.get(semesterKey).appendChild(card);
 
         }
     );
@@ -698,6 +797,30 @@ export function renderCourses() {
 /* ================================================= */
 /* OPEN COURSE MODAL */
 /* ================================================= */
+
+//opens course in existing info
+function editCourse(course) {
+    editingCourseId = course.id;
+
+    //Fill form with current details
+    document.getElementById("courseCode").value = course.code;
+    document.getElementById("courseName").value = course.name;
+    document.getElementById("courseInstructor").value = course.instructor;
+    document.getElementById("courseDays").value = course.days;
+    document.getElementById("courseTime").value = course.time;
+    document.getElementById("courseColor").value = course.color || "#2d6aec";
+    
+    //load semester assigned to course
+    document.getElementById("courseSemester").value =
+        course.semester || "";
+
+    //editing mode
+    document.getElementById("courseModalTitle").textContent = "Edit Course";
+    document.getElementById("courseSubmitButton").textContent = "Save Changes";
+
+    //display the course form
+    openCourseModal();
+}
 
 function openCourseModal() {
 
@@ -787,6 +910,9 @@ export function setupCourses(
     refreshApplicationCallback =
         refreshApplication;
 
+    //refresh course list when switching archive views
+    document.getElementById("showArchivedCourses")
+        ?.addEventListener("change", renderCourses);
 
 
     const modal =
@@ -806,12 +932,19 @@ export function setupCourses(
     /* OPEN MODAL */
     /* ================================================= */
 
-    document.getElementById(
-        "openCourseModalButton"
-    )?.addEventListener(
-        "click",
-        openCourseModal
-    );
+    //open a blank form
+    document.getElementById("openCourseModalButton")
+        ?.addEventListener("click", () => {
+            //clear the selected course
+            editingCourseId = null;
+
+            //reset form
+            document.getElementById("courseForm").reset();
+            document.getElementById("courseModalTitle").textContent = "Add Course";
+            document.getElementById("courseSubmitButton").textContent = "Add Course";
+
+            openCourseModal();
+        });
 
 
 
@@ -968,13 +1101,18 @@ export function setupCourses(
             /* PREVENT DUPLICATE COURSE CODE */
             /* ================================================= */
 
-            const duplicate =
-                getCourses().some(
-                    course =>
-                        course.code
-                            .toLowerCase() ===
-                        code.toLowerCase()
-                );
+            //get semester entered by the user
+            const semester = cleanText(
+                document.getElementById("courseSemester").value,
+                30
+            ) || "Unassigned";
+
+            //checks for duplicate course codes
+            const duplicate = getCourses(true).some(course =>
+                course.id !== editingCourseId &&
+                course.code.toLowerCase() === code.toLowerCase() &&
+                (course.semester || "Unassigned").toLowerCase() === semester.toLowerCase()
+            );
 
 
             if (duplicate) {
@@ -995,39 +1133,25 @@ export function setupCourses(
             /* CREATE COURSE */
             /* ================================================= */
 
+            //store course info 
             const newCourse = {
-
-                id:
-                    createId(
-                        "course"
-                    ),
-
+                id: editingCourseId || createId("course"),
                 code,
-
                 name,
-
                 instructor,
-
                 days,
-
-                /*
-                    Keep a time value even for Online
-                    courses so existing validation
-                    continues to accept the object.
-                */
-
-                time:
-                    time || "00:00"
+                time: time || "00:00",
+                color: document.getElementById("courseColor").value,
+                semester
 
             };
 
+            //update existing course or create a new one
+            const saved = editingCourseId
+                ? updateCourse(editingCourseId, newCourse)
+                : addCourse(newCourse);
 
-            const saved =
-                addCourse(
-                    newCourse
-                );
-
-
+            
             closeCourseModal();
 
 
@@ -1047,16 +1171,17 @@ export function setupCourses(
 
             }
 
-
+            //display message based on what user does
             showMessage(
                 saved
-                    ? "Course added."
-                    : "Course added, but browser storage was unavailable.",
+                    ? (editingCourseId ? "course updated." : "Course added.")
+                    : "Course saved in memory, but browser storage was unavailable.",
                 saved
                     ? "success"
                     : "warning"
             );
 
+            editingCourseId = null; //clear editing mode after save
         }
     );
 

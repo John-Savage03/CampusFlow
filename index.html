@@ -1185,6 +1185,14 @@
 
             </div>
 
+            <!-- alllows users to view archived courses -->
+            <div style="margin-bottom: 16px;">
+                <label>
+                    <input type="checkbox" id="showArchivedCourses">
+                    Show Archived Courses
+                </label>
+            </div>
+
             <div
                 id="courseGrid"
                 class="course-grid"
@@ -1553,6 +1561,32 @@
 
 
             <form id="courseForm">
+
+                <!-- course color -->
+                <div class="form-group">
+                    <label for="courseColor">Course Color</label>
+
+                    <select id="courseColor">
+                        <option value="#2563eb">Blue</option>
+                        <option value="#c2410c">Orange</option>
+                        <option value="#7e22ce">Purple</option>
+                        <option value="#0f766e">Teal</option>
+                        <option value="#be185d">Pink</option>
+                        <option value="#475569">Gray</option>
+                    </select>
+                </div>
+
+                <!-- allows the user to organize courses by semestr -->
+                <div class="form-group">
+                    <label for="courseSemester">Semester</label>
+
+                    <input
+                        type="text"
+                        id="courseSemester"
+                        placeholder="Example: Fall 2026"
+                        maxlength="30"
+                    >
+                </div>
 
                 <div class="form-row">
 
