@@ -1,349 +1,2504 @@
-/* Bulk course material uploads for CampusFlow Course Hub. */
-import { getCourses } from "./state.js";
-import { getCurrentAccountId } from "./account-storage.js";
-import { showMessage } from "./ui.js";
+/*
+    bulk-materials.js
 
-const DB_NAME = "campusflow-bulk-materials-v1";
-const STORE = "files";
-const MAX_FILES = 20;
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_TOTAL_SIZE = 75 * 1024 * 1024;
-let pendingFiles = [];
-let setupDone = false;
+    Bulk course-material uploads.
+
+    Cloud mode:
+    - private Supabase Storage through server-signed URLs
+    - files follow the account across devices
+
+    Local fallback:
+    - IndexedDB keeps the existing offline/browser behavior
+*/
+
+import {
+    getCourses
+}
+from "./state.js";
+
+
+import {
+    getCurrentAccountId
+}
+from "./account-storage.js";
+
+
+import {
+    showMessage
+}
+from "./ui.js";
+
+
+const LOCAL_DB_NAME =
+    "campusflow-bulk-materials-v1";
+
+
+const LOCAL_STORE =
+    "files";
+
+
+const MAX_FILES =
+    20;
+
+
+const MAX_FILE_SIZE =
+    20 * 1024 * 1024;
+
+
+const MAX_TOTAL_SIZE =
+    75 * 1024 * 1024;
+
+
+let pendingFiles =
+    [];
+
+
+let setupDone =
+    false;
+
+
+let cloudFileMode =
+    false;
+
+
 
 function makeId() {
-    if (crypto.randomUUID) return "bulk-" + crypto.randomUUID();
-    return "bulk-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+
+    if (
+        crypto.randomUUID
+    ) {
+
+        return (
+            "bulk-" +
+            crypto.randomUUID()
+        );
+
+    }
+
+
+    return (
+        "bulk-" +
+        Date.now() +
+        "-" +
+        Math.random()
+            .toString(36)
+            .slice(2)
+    );
+
 }
 
-function formatBytes(bytes) {
-    if (!bytes) return "0 KB";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+
+
+function formatBytes(
+    bytes
+) {
+
+    if (!bytes) {
+
+        return "0 KB";
+
+    }
+
+
+    if (
+        bytes <
+        1024 * 1024
+    ) {
+
+        return (
+            (
+                bytes /
+                1024
+            )
+                .toFixed(1) +
+            " KB"
+        );
+
+    }
+
+
+    return (
+        (
+            bytes /
+            (
+                1024 *
+                1024
+            )
+        )
+            .toFixed(1) +
+        " MB"
+    );
+
 }
 
-function openDb() {
-    return new Promise(function(resolve, reject) {
-        const request = indexedDB.open(DB_NAME, 1);
-        request.onupgradeneeded = function() {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(STORE)) {
-                const store = db.createObjectStore(STORE, { keyPath: "id" });
-                store.createIndex("ownerCourse", ["ownerId", "courseId"], { unique: false });
+
+
+async function jsonApi(
+    url,
+    options = {}
+) {
+
+    const response =
+        await fetch(
+            url,
+            {
+                credentials:
+                    "same-origin",
+
+                ...options,
+
+                headers: {
+                    "Content-Type":
+                        "application/json",
+
+                    ...(options.headers || {})
+                }
             }
-        };
-        request.onsuccess = function() { resolve(request.result); };
-        request.onerror = function() { reject(request.error); };
-    });
+        );
+
+
+    let body =
+        {};
+
+
+    try {
+
+        body =
+            await response.json();
+
+    }
+
+    catch {
+
+        body =
+            {};
+
+    }
+
+
+    return {
+        response,
+        body
+    };
+
 }
 
-async function saveRecords(records) {
-    const db = await openDb();
-    return new Promise(function(resolve, reject) {
-        const tx = db.transaction(STORE, "readwrite");
-        const store = tx.objectStore(STORE);
-        records.forEach(function(record) { store.put(record); });
-        tx.oncomplete = function() { db.close(); resolve(); };
-        tx.onerror = function() { const error = tx.error; db.close(); reject(error); };
-    });
+
+
+async function detectCloudFileMode() {
+
+    try {
+
+        const result =
+            await jsonApi(
+                "/api/cloud/status"
+            );
+
+
+        cloudFileMode =
+            result.response.ok &&
+            result.body.configured &&
+            result.body.fileStorageConfigured;
+
+    }
+
+    catch {
+
+        cloudFileMode =
+            false;
+
+    }
+
 }
 
-async function getRecords(ownerId, courseId) {
-    const db = await openDb();
-    return new Promise(function(resolve, reject) {
-        const tx = db.transaction(STORE, "readonly");
-        const index = tx.objectStore(STORE).index("ownerCourse");
-        const request = index.getAll(IDBKeyRange.only([ownerId, courseId]));
-        request.onsuccess = function() {
-            const rows = request.result || [];
-            rows.sort(function(a, b) { return b.uploadedAt - a.uploadedAt; });
-            db.close();
-            resolve(rows);
-        };
-        request.onerror = function() { const error = request.error; db.close(); reject(error); };
-    });
+
+
+/* ================================================= */
+/* LOCAL INDEXEDDB FALLBACK */
+/* ================================================= */
+
+function openLocalDb() {
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const request =
+                indexedDB.open(
+                    LOCAL_DB_NAME,
+                    1
+                );
+
+
+            request.onupgradeneeded =
+                () => {
+
+                    const db =
+                        request.result;
+
+
+                    if (
+                        db.objectStoreNames
+                            .contains(
+                                LOCAL_STORE
+                            )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const store =
+                        db.createObjectStore(
+                            LOCAL_STORE,
+                            {
+                                keyPath:
+                                    "id"
+                            }
+                        );
+
+
+                    store.createIndex(
+                        "ownerCourse",
+                        [
+                            "ownerId",
+                            "courseId"
+                        ],
+                        {
+                            unique:
+                                false
+                        }
+                    );
+
+                };
+
+
+            request.onsuccess =
+                () =>
+                    resolve(
+                        request.result
+                    );
+
+
+            request.onerror =
+                () =>
+                    reject(
+                        request.error
+                    );
+
+        }
+    );
+
 }
 
-async function getRecord(id) {
-    const db = await openDb();
-    return new Promise(function(resolve, reject) {
-        const request = db.transaction(STORE, "readonly").objectStore(STORE).get(id);
-        request.onsuccess = function() { db.close(); resolve(request.result || null); };
-        request.onerror = function() { const error = request.error; db.close(); reject(error); };
-    });
+
+
+async function localSaveRecords(
+    records
+) {
+
+    const db =
+        await openLocalDb();
+
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const transaction =
+                db.transaction(
+                    LOCAL_STORE,
+                    "readwrite"
+                );
+
+
+            const store =
+                transaction.objectStore(
+                    LOCAL_STORE
+                );
+
+
+            records.forEach(
+                record => {
+
+                    store.put(
+                        record
+                    );
+
+                }
+            );
+
+
+            transaction.oncomplete =
+                () => {
+
+                    db.close();
+
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                () => {
+
+                    const error =
+                        transaction.error;
+
+
+                    db.close();
+
+
+                    reject(
+                        error
+                    );
+
+                };
+
+        }
+    );
+
 }
 
-async function removeRecord(id) {
-    const db = await openDb();
-    return new Promise(function(resolve, reject) {
-        const tx = db.transaction(STORE, "readwrite");
-        tx.objectStore(STORE).delete(id);
-        tx.oncomplete = function() { db.close(); resolve(); };
-        tx.onerror = function() { const error = tx.error; db.close(); reject(error); };
-    });
+
+
+async function localFilesFor(
+    ownerId,
+    courseId
+) {
+
+    const db =
+        await openLocalDb();
+
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const transaction =
+                db.transaction(
+                    LOCAL_STORE,
+                    "readonly"
+                );
+
+
+            const index =
+                transaction
+                    .objectStore(
+                        LOCAL_STORE
+                    )
+                    .index(
+                        "ownerCourse"
+                    );
+
+
+            const request =
+                index.getAll(
+                    IDBKeyRange.only([
+                        ownerId,
+                        courseId
+                    ])
+                );
+
+
+            request.onsuccess =
+                () => {
+
+                    const rows =
+                        request.result ||
+                        [];
+
+
+                    rows.sort(
+                        (
+                            first,
+                            second
+                        ) =>
+                            second.uploadedAt -
+                            first.uploadedAt
+                    );
+
+
+                    db.close();
+
+
+                    resolve(
+                        rows
+                    );
+
+                };
+
+
+            request.onerror =
+                () => {
+
+                    const error =
+                        request.error;
+
+
+                    db.close();
+
+
+                    reject(
+                        error
+                    );
+
+                };
+
+        }
+    );
+
 }
 
-function currentCourseId() {
-    const select = document.getElementById("courseHubCourseSelect");
-    return select && select.value ? select.value : (getCourses()[0] ? getCourses()[0].id : "");
+
+
+async function localGetRecord(
+    id
+) {
+
+    const db =
+        await openLocalDb();
+
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const request =
+                db
+                    .transaction(
+                        LOCAL_STORE,
+                        "readonly"
+                    )
+                    .objectStore(
+                        LOCAL_STORE
+                    )
+                    .get(
+                        id
+                    );
+
+
+            request.onsuccess =
+                () => {
+
+                    db.close();
+
+
+                    resolve(
+                        request.result ||
+                        null
+                    );
+
+                };
+
+
+            request.onerror =
+                () => {
+
+                    const error =
+                        request.error;
+
+
+                    db.close();
+
+
+                    reject(
+                        error
+                    );
+
+                };
+
+        }
+    );
+
 }
 
-function injectStyles() {
-    if (document.getElementById("bulkMaterialStyles")) return;
-    const style = document.createElement("style");
-    style.id = "bulkMaterialStyles";
-    style.textContent = ".bulk-list{display:grid;gap:10px}.bulk-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#f9fafb}.bulk-meta{margin-top:4px;color:var(--muted);font-size:12px}.bulk-actions{display:flex;gap:7px;flex-wrap:wrap}.bulk-action{padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;background:white}.bulk-delete{color:var(--danger);border-color:#fecaca}.bulk-picker{padding:18px;border:2px dashed #93c5fd;border-radius:10px;background:#eff6ff;text-align:center}@media(max-width:620px){.bulk-row{align-items:flex-start;flex-direction:column}}";
-    document.head.appendChild(style);
+
+
+async function localDeleteRecord(
+    id
+) {
+
+    const db =
+        await openLocalDb();
+
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const transaction =
+                db.transaction(
+                    LOCAL_STORE,
+                    "readwrite"
+                );
+
+
+            transaction
+                .objectStore(
+                    LOCAL_STORE
+                )
+                .delete(
+                    id
+                );
+
+
+            transaction.oncomplete =
+                () => {
+
+                    db.close();
+
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                () => {
+
+                    const error =
+                        transaction.error;
+
+
+                    db.close();
+
+
+                    reject(
+                        error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
+
+
+/* ================================================= */
+/* UI */
+/* ================================================= */
+
+function activeCourseId() {
+
+    return (
+        document.getElementById(
+            "courseHubCourseSelect"
+        )?.value ||
+        getCourses()[0]?.id ||
+        ""
+    );
+
+}
+
+
+
+function addStyles() {
+
+    if (
+        document.getElementById(
+            "bulkUploadStyles"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const style =
+        document.createElement(
+            "style"
+        );
+
+
+    style.id =
+        "bulkUploadStyles";
+
+
+    style.textContent =
+        `
+            .bulk-list {
+                display: grid;
+                gap: 10px;
+            }
+
+            .bulk-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 12px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: #f9fafb;
+            }
+
+            .bulk-meta {
+                margin-top: 4px;
+                color: var(--muted);
+                font-size: 12px;
+            }
+
+            .bulk-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 7px;
+            }
+
+            .bulk-action {
+                padding: 7px 10px;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                background: white;
+            }
+
+            .bulk-delete {
+                border-color: #fecaca;
+                color: var(--danger);
+            }
+
+            .bulk-picker {
+                padding: 18px;
+                border: 2px dashed #93c5fd;
+                border-radius: 10px;
+                background: #eff6ff;
+                text-align: center;
+            }
+
+            .bulk-cloud-label {
+                display: inline-block;
+                margin-left: 8px;
+                color: var(--success);
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            @media (max-width: 620px) {
+                .bulk-row {
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+            }
+        `;
+
+
+    document.head.appendChild(
+        style
+    );
+
+}
+
+
 
 function injectUi() {
-    const hub = document.getElementById("courseHub");
-    if (!hub) return false;
 
-    const actions = hub.querySelector(".course-hub-actions");
-    if (actions && !document.getElementById("openBulkMaterialButton")) {
-        const button = document.createElement("button");
-        button.id = "openBulkMaterialButton";
-        button.type = "button";
-        button.className = "secondary-button";
-        button.textContent = "Bulk Upload Files";
-        actions.appendChild(button);
+    const hub =
+        document.getElementById(
+            "courseHub"
+        );
+
+
+    if (!hub) {
+
+        return false;
+
     }
 
-    const materialPanel = document.getElementById("courseMaterialList")?.closest(".panel");
-    if (materialPanel && !document.getElementById("bulkMaterialPanel")) {
-        const panel = document.createElement("div");
-        panel.id = "bulkMaterialPanel";
-        panel.className = "panel";
-        panel.innerHTML = '<div class="panel-header"><div><h2>Uploaded Files</h2><p class="panel-subtitle">Files uploaded in bulk for the selected course.</p></div><span id="bulkMaterialCount" class="panel-subtitle">0 files</span></div><div id="bulkMaterialList" class="bulk-list"></div>';
-        materialPanel.insertAdjacentElement("afterend", panel);
+
+    const actions =
+        hub.querySelector(
+            ".course-hub-actions"
+        );
+
+
+    if (
+        actions &&
+        !document.getElementById(
+            "openBulkUploadButton"
+        )
+    ) {
+
+        const button =
+            document.createElement(
+                "button"
+            );
+
+
+        button.id =
+            "openBulkUploadButton";
+
+
+        button.type =
+            "button";
+
+
+        button.className =
+            "secondary-button";
+
+
+        button.textContent =
+            "Bulk Upload Files";
+
+
+        actions.appendChild(
+            button
+        );
+
     }
 
-    if (!document.getElementById("bulkMaterialModal")) {
-        const modal = document.createElement("div");
-        modal.id = "bulkMaterialModal";
-        modal.className = "modal-overlay";
-        modal.setAttribute("aria-hidden", "true");
-        modal.innerHTML = '<div class="modal"><div class="modal-header"><div><h2>Bulk Upload Course Materials</h2><p>Select multiple files for one course.</p></div><button type="button" class="close-button" id="closeBulkMaterialButton">×</button></div><form id="bulkMaterialForm"><div class="form-group"><label for="bulkMaterialCourse">Course</label><select id="bulkMaterialCourse" required></select></div><div class="bulk-picker"><input id="bulkMaterialFiles" type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,.rtf,.png,.jpg,.jpeg,.webp,.gif,.zip"><p class="panel-subtitle" style="margin-top:8px">Choose up to 20 files. 20 MB each, 75 MB total.</p></div><div id="bulkPendingList" class="bulk-list" style="margin-top:16px"></div><div class="modal-actions"><button type="button" class="secondary-button" id="cancelBulkMaterialButton">Cancel</button><button type="submit" class="primary-button" id="uploadBulkMaterialButton">Upload All</button></div></form></div>';
-        document.body.appendChild(modal);
+
+    const materialPanel =
+        document
+            .getElementById(
+                "courseMaterialList"
+            )
+            ?.closest(
+                ".panel"
+            );
+
+
+    if (
+        materialPanel &&
+        !document.getElementById(
+            "bulkFilePanel"
+        )
+    ) {
+
+        const panel =
+            document.createElement(
+                "div"
+            );
+
+
+        panel.id =
+            "bulkFilePanel";
+
+
+        panel.className =
+            "panel";
+
+
+        panel.innerHTML =
+            `
+                <div class="panel-header">
+                    <div>
+                        <h2>
+                            Uploaded Files
+                            <span
+                                id="bulkStorageLabel"
+                                class="bulk-cloud-label"
+                            ></span>
+                        </h2>
+
+                        <p class="panel-subtitle">
+                            Bulk-uploaded files for the selected course.
+                        </p>
+                    </div>
+
+                    <span
+                        id="bulkFileCount"
+                        class="panel-subtitle"
+                    >
+                        0 files
+                    </span>
+                </div>
+
+                <div
+                    id="bulkFileList"
+                    class="bulk-list"
+                ></div>
+            `;
+
+
+        materialPanel
+            .insertAdjacentElement(
+                "afterend",
+                panel
+            );
+
     }
+
+
+    if (
+        !document.getElementById(
+            "bulkUploadModal"
+        )
+    ) {
+
+        const modal =
+            document.createElement(
+                "div"
+            );
+
+
+        modal.id =
+            "bulkUploadModal";
+
+
+        modal.className =
+            "modal-overlay";
+
+
+        modal.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
+
+        modal.innerHTML =
+            `
+                <div class="modal">
+
+                    <div class="modal-header">
+
+                        <div>
+                            <h2>
+                                Bulk Upload Course Materials
+                            </h2>
+
+                            <p>
+                                Select multiple files for one course.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="close-button"
+                            id="closeBulkUploadButton"
+                        >
+                            ×
+                        </button>
+
+                    </div>
+
+
+                    <form id="bulkUploadForm">
+
+                        <div class="form-group">
+
+                            <label for="bulkUploadCourse">
+                                Course
+                            </label>
+
+                            <select
+                                id="bulkUploadCourse"
+                                required
+                            ></select>
+
+                        </div>
+
+
+                        <div class="bulk-picker">
+
+                            <input
+                                id="bulkFileInput"
+                                type="file"
+                                multiple
+                                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,.rtf,.png,.jpg,.jpeg,.webp,.gif,.zip"
+                            >
+
+                            <p
+                                class="panel-subtitle"
+                                style="margin-top: 8px"
+                            >
+                                Up to 20 files, 20 MB each,
+                                75 MB total per batch.
+                            </p>
+
+                        </div>
+
+
+                        <div
+                            id="bulkPendingList"
+                            class="bulk-list"
+                            style="margin-top: 16px"
+                        ></div>
+
+
+                        <div class="modal-actions">
+
+                            <button
+                                type="button"
+                                class="secondary-button"
+                                id="cancelBulkUploadButton"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="submit"
+                                class="primary-button"
+                                id="saveBulkUploadButton"
+                            >
+                                Upload All
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            `;
+
+
+        document.body.appendChild(
+            modal
+        );
+
+    }
+
+
     return true;
+
 }
+
+
 
 function populateCourses() {
-    const select = document.getElementById("bulkMaterialCourse");
-    if (!select) return;
-    const courses = getCourses();
-    const current = currentCourseId();
+
+    const select =
+        document.getElementById(
+            "bulkUploadCourse"
+        );
+
+
+    if (!select) {
+
+        return;
+
+    }
+
+
+    const courses =
+        getCourses();
+
+
+    const current =
+        activeCourseId();
+
+
     select.replaceChildren();
-    courses.forEach(function(course) {
-        const option = document.createElement("option");
-        option.value = course.id;
-        option.textContent = course.code + " - " + course.name;
-        select.appendChild(option);
-    });
-    if (courses.some(function(course) { return course.id === current; })) select.value = current;
+
+
+    courses.forEach(
+        course => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                course.id;
+
+
+            option.textContent =
+                `${course.code} - ${course.name}`;
+
+
+            select.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    if (
+        courses.some(
+            course =>
+                course.id ===
+                current
+        )
+    ) {
+
+        select.value =
+            current;
+
+    }
+
 }
+
+
 
 function renderPending() {
-    const list = document.getElementById("bulkPendingList");
-    const upload = document.getElementById("uploadBulkMaterialButton");
-    if (!list) return;
-    list.replaceChildren();
-    if (!pendingFiles.length) {
-        const message = document.createElement("p");
-        message.className = "empty-message";
-        message.textContent = "No files selected yet.";
-        list.appendChild(message);
-        if (upload) upload.disabled = true;
+
+    const list =
+        document.getElementById(
+            "bulkPendingList"
+        );
+
+
+    const save =
+        document.getElementById(
+            "saveBulkUploadButton"
+        );
+
+
+    if (!list) {
+
         return;
+
     }
-    if (upload) upload.disabled = false;
-    pendingFiles.forEach(function(file, index) {
-        const row = document.createElement("div");
-        row.className = "bulk-row";
-        const info = document.createElement("div");
-        const name = document.createElement("strong");
-        name.textContent = file.name;
-        const meta = document.createElement("div");
-        meta.className = "bulk-meta";
-        meta.textContent = formatBytes(file.size);
-        info.append(name, meta);
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "bulk-action bulk-delete";
-        remove.dataset.index = String(index);
-        remove.textContent = "Remove";
-        row.append(info, remove);
-        list.appendChild(row);
-    });
+
+
+    list.replaceChildren();
+
+
+    if (
+        pendingFiles.length ===
+        0
+    ) {
+
+        const message =
+            document.createElement(
+                "p"
+            );
+
+
+        message.className =
+            "empty-message";
+
+
+        message.textContent =
+            "No files selected yet.";
+
+
+        list.appendChild(
+            message
+        );
+
+
+        if (save) {
+
+            save.disabled =
+                true;
+
+        }
+
+
+        return;
+
+    }
+
+
+    if (save) {
+
+        save.disabled =
+            false;
+
+    }
+
+
+    pendingFiles.forEach(
+        (
+            file,
+            index
+        ) => {
+
+            const row =
+                document.createElement(
+                    "div"
+                );
+
+
+            row.className =
+                "bulk-row";
+
+
+            const info =
+                document.createElement(
+                    "div"
+                );
+
+
+            const name =
+                document.createElement(
+                    "strong"
+                );
+
+
+            name.textContent =
+                file.name;
+
+
+            const meta =
+                document.createElement(
+                    "div"
+                );
+
+
+            meta.className =
+                "bulk-meta";
+
+
+            meta.textContent =
+                formatBytes(
+                    file.size
+                );
+
+
+            info.append(
+                name,
+                meta
+            );
+
+
+            const remove =
+                document.createElement(
+                    "button"
+                );
+
+
+            remove.type =
+                "button";
+
+
+            remove.className =
+                "bulk-action bulk-delete";
+
+
+            remove.dataset.index =
+                String(
+                    index
+                );
+
+
+            remove.textContent =
+                "Remove";
+
+
+            row.append(
+                info,
+                remove
+            );
+
+
+            list.appendChild(
+                row
+            );
+
+        }
+    );
+
 }
+
+
 
 function openModal() {
-    if (!getCourses().length) return showMessage("Create a course before uploading materials.", "warning");
+
+    if (
+        getCourses().length ===
+        0
+    ) {
+
+        showMessage(
+            "Create a course before uploading materials.",
+            "warning"
+        );
+
+
+        return;
+
+    }
+
+
     populateCourses();
-    pendingFiles = [];
+
+
+    pendingFiles =
+        [];
+
+
     renderPending();
-    const modal = document.getElementById("bulkMaterialModal");
-    modal?.classList.add("show");
-    modal?.setAttribute("aria-hidden", "false");
+
+
+    const input =
+        document.getElementById(
+            "bulkFileInput"
+        );
+
+
+    if (input) {
+
+        input.value =
+            "";
+
+    }
+
+
+    const modal =
+        document.getElementById(
+            "bulkUploadModal"
+        );
+
+
+    modal?.classList.add(
+        "show"
+    );
+
+
+    modal?.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
 }
+
+
 
 function closeModal() {
-    const modal = document.getElementById("bulkMaterialModal");
-    modal?.classList.remove("show");
-    modal?.setAttribute("aria-hidden", "true");
-    pendingFiles = [];
+
+    const modal =
+        document.getElementById(
+            "bulkUploadModal"
+        );
+
+
+    modal?.classList.remove(
+        "show"
+    );
+
+
+    modal?.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    pendingFiles =
+        [];
+
 }
 
-async function openFile(recordId, download) {
-    const ownerId = getCurrentAccountId();
-    const record = await getRecord(recordId);
-    if (!record || record.ownerId !== ownerId) return showMessage("That file is not available for this account.", "error");
-    const url = URL.createObjectURL(record.blob);
-    if (download) {
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = record.name;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-    } else {
-        window.open(url, "_blank", "noopener,noreferrer");
+
+
+/* ================================================= */
+/* CLOUD FILE OPERATIONS */
+/* ================================================= */
+
+async function cloudListFiles(
+    courseId
+) {
+
+    const result =
+        await jsonApi(
+            "/api/cloud/files?courseId=" +
+            encodeURIComponent(
+                courseId
+            )
+        );
+
+
+    if (!result.response.ok) {
+
+        throw new Error(
+            result.body.message ||
+            "Unable to load cloud files."
+        );
+
     }
-    setTimeout(function() { URL.revokeObjectURL(url); }, download ? 1000 : 60000);
+
+
+    return result.body.files ||
+        [];
+
 }
+
+
+
+async function cloudUploadFile(
+    courseId,
+    file
+) {
+
+    const prepared =
+        await jsonApi(
+            "/api/cloud/files/upload-url",
+            {
+                method:
+                    "POST",
+
+                body:
+                    JSON.stringify({
+                        courseId,
+                        fileName:
+                            file.name,
+
+                        mimeType:
+                            file.type ||
+                            "application/octet-stream",
+
+                        fileSize:
+                            file.size
+                    })
+            }
+        );
+
+
+    if (
+        !prepared.response.ok
+    ) {
+
+        throw new Error(
+            prepared.body.message ||
+            "Unable to prepare file upload."
+        );
+
+    }
+
+
+    const uploadResponse =
+        await fetch(
+            prepared.body.signedUrl,
+            {
+                method:
+                    "PUT",
+
+                headers: {
+                    "Content-Type":
+                        file.type ||
+                        "application/octet-stream"
+                },
+
+                body:
+                    file
+            }
+        );
+
+
+    if (
+        !uploadResponse.ok
+    ) {
+
+        await jsonApi(
+            "/api/cloud/files/" +
+            encodeURIComponent(
+                prepared.body.id
+            ),
+            {
+                method:
+                    "DELETE"
+            }
+        );
+
+
+        throw new Error(
+            `Upload failed for ${file.name}.`
+        );
+
+    }
+
+}
+
+
+
+async function cloudOpenFile(
+    id,
+    download
+) {
+
+    const result =
+        await jsonApi(
+            "/api/cloud/files/" +
+            encodeURIComponent(
+                id
+            ) +
+            "/url?download=" +
+            (
+                download
+                    ? "1"
+                    : "0"
+            )
+        );
+
+
+    if (
+        !result.response.ok ||
+        !result.body.signedUrl
+    ) {
+
+        throw new Error(
+            result.body.message ||
+            "Unable to open that file."
+        );
+
+    }
+
+
+    if (download) {
+
+        const link =
+            document.createElement(
+                "a"
+            );
+
+
+        link.href =
+            result.body.signedUrl;
+
+
+        link.download =
+            result.body.file?.file_name ||
+            "";
+
+
+        document.body.appendChild(
+            link
+        );
+
+
+        link.click();
+
+
+        link.remove();
+
+    }
+
+    else {
+
+        window.open(
+            result.body.signedUrl,
+            "_blank",
+            "noopener,noreferrer"
+        );
+
+    }
+
+}
+
+
+
+async function cloudDeleteFile(
+    id
+) {
+
+    const result =
+        await jsonApi(
+            "/api/cloud/files/" +
+            encodeURIComponent(
+                id
+            ),
+            {
+                method:
+                    "DELETE"
+            }
+        );
+
+
+    if (!result.response.ok) {
+
+        throw new Error(
+            result.body.message ||
+            "Unable to delete that file."
+        );
+
+    }
+
+}
+
+
+
+/* ================================================= */
+/* RENDER */
+/* ================================================= */
 
 export async function renderBulkMaterials() {
-    injectStyles();
-    if (!injectUi()) return;
-    const list = document.getElementById("bulkMaterialList");
-    const count = document.getElementById("bulkMaterialCount");
-    if (!list || !count) return;
+
+    addStyles();
+
+
+    if (
+        !injectUi()
+    ) {
+
+        return;
+
+    }
+
+
+    const list =
+        document.getElementById(
+            "bulkFileList"
+        );
+
+
+    const count =
+        document.getElementById(
+            "bulkFileCount"
+        );
+
+
+    const label =
+        document.getElementById(
+            "bulkStorageLabel"
+        );
+
+
+    if (
+        !list ||
+        !count
+    ) {
+
+        return;
+
+    }
+
+
     list.replaceChildren();
 
-    const ownerId = getCurrentAccountId();
-    const courseId = currentCourseId();
-    if (!ownerId || !courseId) {
-        count.textContent = "0 files";
-        return;
+
+    if (label) {
+
+        label.textContent =
+            cloudFileMode
+                ? "CLOUD"
+                : "THIS DEVICE";
+
     }
 
-    const records = await getRecords(ownerId, courseId);
-    count.textContent = records.length + " file" + (records.length === 1 ? "" : "s");
-    if (!records.length) {
-        const message = document.createElement("p");
-        message.className = "empty-message";
-        message.textContent = "No uploaded files for this course yet.";
-        list.appendChild(message);
+
+    const ownerId =
+        getCurrentAccountId();
+
+
+    const courseId =
+        activeCourseId();
+
+
+    if (
+        !ownerId ||
+        !courseId
+    ) {
+
+        count.textContent =
+            "0 files";
+
+
         return;
+
     }
 
-    records.forEach(function(record) {
-        const row = document.createElement("article");
-        row.className = "bulk-row";
-        row.dataset.fileId = record.id;
-        const info = document.createElement("div");
-        const name = document.createElement("strong");
-        name.textContent = record.name;
-        const meta = document.createElement("div");
-        meta.className = "bulk-meta";
-        meta.textContent = formatBytes(record.size) + " • Uploaded " + new Date(record.uploadedAt).toLocaleDateString();
-        info.append(name, meta);
-        const actions = document.createElement("div");
-        actions.className = "bulk-actions";
-        [["open", "Open"], ["download", "Download"], ["delete", "Delete"]].forEach(function(item) {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "bulk-action" + (item[0] === "delete" ? " bulk-delete" : "");
-            button.dataset.action = item[0];
-            button.textContent = item[1];
-            actions.appendChild(button);
-        });
-        row.append(info, actions);
-        list.appendChild(row);
-    });
+
+    let records;
+
+
+    try {
+
+        records =
+            cloudFileMode
+                ? await cloudListFiles(
+                    courseId
+                )
+                : await localFilesFor(
+                    ownerId,
+                    courseId
+                );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Unable to load uploaded files:",
+            error
+        );
+
+
+        const message =
+            document.createElement(
+                "p"
+            );
+
+
+        message.className =
+            "empty-message";
+
+
+        message.textContent =
+            "Uploaded files could not be loaded.";
+
+
+        list.appendChild(
+            message
+        );
+
+
+        return;
+
+    }
+
+
+    count.textContent =
+        `${records.length} file${records.length === 1 ? "" : "s"}`;
+
+
+    if (
+        records.length ===
+        0
+    ) {
+
+        const message =
+            document.createElement(
+                "p"
+            );
+
+
+        message.className =
+            "empty-message";
+
+
+        message.textContent =
+            "No uploaded files for this course yet.";
+
+
+        list.appendChild(
+            message
+        );
+
+
+        return;
+
+    }
+
+
+    records.forEach(
+        record => {
+
+            const id =
+                record.id;
+
+
+            const name =
+                record.file_name ||
+                record.name;
+
+
+            const size =
+                Number(
+                    record.file_size ??
+                    record.size ??
+                    0
+                );
+
+
+            const created =
+                record.created_at
+                    ? new Date(
+                        record.created_at
+                    )
+                    : new Date(
+                        record.uploadedAt
+                    );
+
+
+            const row =
+                document.createElement(
+                    "article"
+                );
+
+
+            row.className =
+                "bulk-row";
+
+
+            row.dataset.fileId =
+                id;
+
+
+            const info =
+                document.createElement(
+                    "div"
+                );
+
+
+            const title =
+                document.createElement(
+                    "strong"
+                );
+
+
+            title.textContent =
+                name;
+
+
+            const meta =
+                document.createElement(
+                    "div"
+                );
+
+
+            meta.className =
+                "bulk-meta";
+
+
+            meta.textContent =
+                `${formatBytes(size)} • Uploaded ${created.toLocaleDateString()}`;
+
+
+            info.append(
+                title,
+                meta
+            );
+
+
+            const actions =
+                document.createElement(
+                    "div"
+                );
+
+
+            actions.className =
+                "bulk-actions";
+
+
+            [
+                [
+                    "open",
+                    "Open"
+                ],
+                [
+                    "download",
+                    "Download"
+                ],
+                [
+                    "delete",
+                    "Delete"
+                ]
+            ].forEach(
+                ([
+                    action,
+                    text
+                ]) => {
+
+                    const button =
+                        document.createElement(
+                            "button"
+                        );
+
+
+                    button.type =
+                        "button";
+
+
+                    button.className =
+                        "bulk-action" +
+                        (
+                            action ===
+                            "delete"
+                                ? " bulk-delete"
+                                : ""
+                        );
+
+
+                    button.dataset.action =
+                        action;
+
+
+                    button.textContent =
+                        text;
+
+
+                    actions.appendChild(
+                        button
+                    );
+
+                }
+            );
+
+
+            row.append(
+                info,
+                actions
+            );
+
+
+            list.appendChild(
+                row
+            );
+
+        }
+    );
+
 }
 
+
+
+/* ================================================= */
+/* SETUP */
+/* ================================================= */
+
 export async function setupBulkMaterials() {
-    if (setupDone) return renderBulkMaterials();
-    injectStyles();
-    if (!injectUi()) return;
-    setupDone = true;
 
-    document.getElementById("openBulkMaterialButton")?.addEventListener("click", openModal);
-    document.getElementById("closeBulkMaterialButton")?.addEventListener("click", closeModal);
-    document.getElementById("cancelBulkMaterialButton")?.addEventListener("click", closeModal);
+    if (setupDone) {
 
-    document.getElementById("bulkMaterialFiles")?.addEventListener("change", function(event) {
-        const selected = Array.from(event.target.files || []).slice(0, MAX_FILES);
-        const accepted = selected.filter(function(file) { return file.size <= MAX_FILE_SIZE; });
-        pendingFiles = accepted;
-        renderPending();
-        if (accepted.length !== Array.from(event.target.files || []).length) showMessage("Some files were skipped because of size or the 20-file limit.", "warning");
-    });
+        return renderBulkMaterials();
 
-    document.getElementById("bulkPendingList")?.addEventListener("click", function(event) {
-        const button = event.target.closest("[data-index]");
-        if (!button) return;
-        pendingFiles.splice(Number(button.dataset.index), 1);
-        renderPending();
-    });
+    }
 
-    document.getElementById("bulkMaterialForm")?.addEventListener("submit", async function(event) {
-        event.preventDefault();
-        const ownerId = getCurrentAccountId();
-        const courseId = document.getElementById("bulkMaterialCourse")?.value || "";
-        if (!ownerId) return showMessage("Log in before uploading files.", "error");
-        if (!getCourses().some(function(course) { return course.id === courseId; })) return showMessage("Choose a valid course.", "error");
-        if (!pendingFiles.length) return showMessage("Choose at least one file.", "warning");
-        const total = pendingFiles.reduce(function(sum, file) { return sum + file.size; }, 0);
-        if (total > MAX_TOTAL_SIZE) return showMessage("This upload is larger than the 75 MB total limit.", "error");
 
-        const button = document.getElementById("uploadBulkMaterialButton");
-        if (button) { button.disabled = true; button.textContent = "Uploading..."; }
-        try {
-            const uploadedAt = Date.now();
-            const records = pendingFiles.map(function(file) {
-                return { id: makeId(), ownerId, courseId, name: file.name, type: file.type, size: file.size, uploadedAt, blob: file };
-            });
-            await saveRecords(records);
-            const hubSelect = document.getElementById("courseHubCourseSelect");
-            if (hubSelect) hubSelect.value = courseId;
-            closeModal();
-            await renderBulkMaterials();
-            showMessage(records.length + " file" + (records.length === 1 ? "" : "s") + " uploaded.", "success");
-        } catch (error) {
-            console.error("Bulk material upload failed:", error);
-            showMessage("The browser could not save those files. Try fewer or smaller files.", "error");
-        } finally {
-            if (button) { button.disabled = false; button.textContent = "Upload All"; }
-        }
-    });
+    await detectCloudFileMode();
 
-    document.getElementById("bulkMaterialList")?.addEventListener("click", async function(event) {
-        const button = event.target.closest("[data-action]");
-        const row = button?.closest("[data-file-id]");
-        if (!button || !row) return;
-        if (button.dataset.action === "open") return openFile(row.dataset.fileId, false);
-        if (button.dataset.action === "download") return openFile(row.dataset.fileId, true);
-        if (button.dataset.action === "delete") {
-            const record = await getRecord(row.dataset.fileId);
-            if (!record || record.ownerId !== getCurrentAccountId()) return;
-            if (!confirm("Delete " + record.name + "?")) return;
-            await removeRecord(record.id);
-            await renderBulkMaterials();
-            showMessage("Uploaded file deleted.", "success");
-        }
-    });
 
-    document.getElementById("courseHubCourseSelect")?.addEventListener("change", function() {
-        renderBulkMaterials().catch(function(error) { console.error(error); });
-    });
+    addStyles();
 
-    document.getElementById("bulkMaterialModal")?.addEventListener("click", function(event) {
-        if (event.target.id === "bulkMaterialModal") closeModal();
-    });
+
+    if (
+        !injectUi()
+    ) {
+
+        return;
+
+    }
+
+
+    setupDone =
+        true;
+
+
+    document
+        .getElementById(
+            "openBulkUploadButton"
+        )
+        ?.addEventListener(
+            "click",
+            openModal
+        );
+
+
+    document
+        .getElementById(
+            "closeBulkUploadButton"
+        )
+        ?.addEventListener(
+            "click",
+            closeModal
+        );
+
+
+    document
+        .getElementById(
+            "cancelBulkUploadButton"
+        )
+        ?.addEventListener(
+            "click",
+            closeModal
+        );
+
+
+    document
+        .getElementById(
+            "bulkFileInput"
+        )
+        ?.addEventListener(
+            "change",
+            event => {
+
+                const original =
+                    Array.from(
+                        event.target.files ||
+                        []
+                    );
+
+
+                const selected =
+                    original
+                        .slice(
+                            0,
+                            MAX_FILES
+                        )
+                        .filter(
+                            file =>
+                                file.size <=
+                                MAX_FILE_SIZE
+                        );
+
+
+                pendingFiles =
+                    selected;
+
+
+                renderPending();
+
+
+                if (
+                    selected.length !==
+                    original.length
+                ) {
+
+                    showMessage(
+                        "Some files were skipped because of the 20-file or 20 MB limit.",
+                        "warning"
+                    );
+
+                }
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "bulkPendingList"
+        )
+        ?.addEventListener(
+            "click",
+            event => {
+
+                const button =
+                    event.target.closest(
+                        "[data-index]"
+                    );
+
+
+                if (!button) {
+
+                    return;
+
+                }
+
+
+                pendingFiles.splice(
+                    Number(
+                        button.dataset.index
+                    ),
+                    1
+                );
+
+
+                renderPending();
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "bulkUploadForm"
+        )
+        ?.addEventListener(
+            "submit",
+            async event => {
+
+                event.preventDefault();
+
+
+                const ownerId =
+                    getCurrentAccountId();
+
+
+                const courseId =
+                    document.getElementById(
+                        "bulkUploadCourse"
+                    )?.value ||
+                    "";
+
+
+                if (!ownerId) {
+
+                    return showMessage(
+                        "Log in before uploading files.",
+                        "error"
+                    );
+
+                }
+
+
+                if (
+                    !getCourses()
+                        .some(
+                            course =>
+                                course.id ===
+                                courseId
+                        )
+                ) {
+
+                    return showMessage(
+                        "Choose a valid course.",
+                        "error"
+                    );
+
+                }
+
+
+                if (
+                    pendingFiles.length ===
+                    0
+                ) {
+
+                    return showMessage(
+                        "Choose at least one file.",
+                        "warning"
+                    );
+
+                }
+
+
+                const total =
+                    pendingFiles
+                        .reduce(
+                            (
+                                sum,
+                                file
+                            ) =>
+                                sum +
+                                file.size,
+                            0
+                        );
+
+
+                if (
+                    total >
+                    MAX_TOTAL_SIZE
+                ) {
+
+                    return showMessage(
+                        "This batch is larger than the 75 MB total limit.",
+                        "error"
+                    );
+
+                }
+
+
+                const button =
+                    document.getElementById(
+                        "saveBulkUploadButton"
+                    );
+
+
+                if (button) {
+
+                    button.disabled =
+                        true;
+
+
+                    button.textContent =
+                        "Uploading...";
+
+                }
+
+
+                try {
+
+                    if (
+                        cloudFileMode
+                    ) {
+
+                        for (
+                            const file of
+                            pendingFiles
+                        ) {
+
+                            await cloudUploadFile(
+                                courseId,
+                                file
+                            );
+
+                        }
+
+                    }
+
+                    else {
+
+                        const uploadedAt =
+                            Date.now();
+
+
+                        await localSaveRecords(
+                            pendingFiles.map(
+                                file => ({
+                                    id:
+                                        makeId(),
+
+                                    ownerId,
+
+                                    courseId,
+
+                                    name:
+                                        file.name,
+
+                                    type:
+                                        file.type ||
+                                        "application/octet-stream",
+
+                                    size:
+                                        file.size,
+
+                                    uploadedAt,
+
+                                    blob:
+                                        file
+                                })
+                            )
+                        );
+
+                    }
+
+
+                    const totalFiles =
+                        pendingFiles.length;
+
+
+                    const hubSelect =
+                        document.getElementById(
+                            "courseHubCourseSelect"
+                        );
+
+
+                    if (hubSelect) {
+
+                        hubSelect.value =
+                            courseId;
+
+                    }
+
+
+                    closeModal();
+
+
+                    await renderBulkMaterials();
+
+
+                    showMessage(
+                        `${totalFiles} file${totalFiles === 1 ? "" : "s"} uploaded.`,
+                        "success"
+                    );
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Bulk upload failed:",
+                        error
+                    );
+
+
+                    showMessage(
+                        error.message ||
+                        "The files could not be uploaded.",
+                        "error"
+                    );
+
+                }
+
+                finally {
+
+                    if (button) {
+
+                        button.disabled =
+                            false;
+
+
+                        button.textContent =
+                            "Upload All";
+
+                    }
+
+                }
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "bulkFileList"
+        )
+        ?.addEventListener(
+            "click",
+            async event => {
+
+                const button =
+                    event.target.closest(
+                        "[data-action]"
+                    );
+
+
+                const row =
+                    button?.closest(
+                        "[data-file-id]"
+                    );
+
+
+                if (
+                    !button ||
+                    !row
+                ) {
+
+                    return;
+
+                }
+
+
+                const id =
+                    row.dataset.fileId;
+
+
+                try {
+
+                    if (
+                        cloudFileMode
+                    ) {
+
+                        if (
+                            button.dataset.action ===
+                            "open"
+                        ) {
+
+                            await cloudOpenFile(
+                                id,
+                                false
+                            );
+
+                        }
+
+
+                        if (
+                            button.dataset.action ===
+                            "download"
+                        ) {
+
+                            await cloudOpenFile(
+                                id,
+                                true
+                            );
+
+                        }
+
+
+                        if (
+                            button.dataset.action ===
+                            "delete"
+                        ) {
+
+                            if (
+                                !window.confirm(
+                                    "Delete this uploaded file?"
+                                )
+                            ) {
+
+                                return;
+
+                            }
+
+
+                            await cloudDeleteFile(
+                                id
+                            );
+
+
+                            await renderBulkMaterials();
+
+
+                            showMessage(
+                                "Uploaded file deleted.",
+                                "success"
+                            );
+
+                        }
+
+
+                        return;
+
+                    }
+
+
+                    const record =
+                        await localGetRecord(
+                            id
+                        );
+
+
+                    if (
+                        !record ||
+                        record.ownerId !==
+                            getCurrentAccountId()
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    if (
+                        button.dataset.action ===
+                        "delete"
+                    ) {
+
+                        if (
+                            !window.confirm(
+                                `Delete ${record.name}?`
+                            )
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        await localDeleteRecord(
+                            record.id
+                        );
+
+
+                        await renderBulkMaterials();
+
+
+                        showMessage(
+                            "Uploaded file deleted.",
+                            "success"
+                        );
+
+
+                        return;
+
+                    }
+
+
+                    const url =
+                        URL.createObjectURL(
+                            record.blob
+                        );
+
+
+                    if (
+                        button.dataset.action ===
+                        "download"
+                    ) {
+
+                        const link =
+                            document.createElement(
+                                "a"
+                            );
+
+
+                        link.href =
+                            url;
+
+
+                        link.download =
+                            record.name;
+
+
+                        document.body.appendChild(
+                            link
+                        );
+
+
+                        link.click();
+
+
+                        link.remove();
+
+
+                        window.setTimeout(
+                            () =>
+                                URL.revokeObjectURL(
+                                    url
+                                ),
+                            1000
+                        );
+
+                    }
+
+                    else {
+
+                        window.open(
+                            url,
+                            "_blank",
+                            "noopener,noreferrer"
+                        );
+
+
+                        window.setTimeout(
+                            () =>
+                                URL.revokeObjectURL(
+                                    url
+                                ),
+                            60000
+                        );
+
+                    }
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Uploaded file action failed:",
+                        error
+                    );
+
+
+                    showMessage(
+                        "That file action could not be completed.",
+                        "error"
+                    );
+
+                }
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "courseHubCourseSelect"
+        )
+        ?.addEventListener(
+            "change",
+            () => {
+
+                renderBulkMaterials()
+                    .catch(
+                        error =>
+                            console.error(
+                                error
+                            )
+                    );
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "bulkUploadModal"
+        )
+        ?.addEventListener(
+            "click",
+            event => {
+
+                if (
+                    event.target.id ===
+                    "bulkUploadModal"
+                ) {
+
+                    closeModal();
+
+                }
+
+            }
+        );
+
 
     await renderBulkMaterials();
+
 }
