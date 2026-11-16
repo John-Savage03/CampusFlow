@@ -531,6 +531,59 @@ app.get(
 
 
 
+
+
+
+/* ================================================= */
+/* PASSWORD RECOVERY PAGES */
+/* ================================================= */
+
+[
+    {
+        paths: [
+            "/forgot-password",
+            "/forgot-password.html"
+        ],
+        file: "forgot-password.html"
+    },
+    {
+        paths: [
+            "/reset-password",
+            "/reset-password.html"
+        ],
+        file: "reset-password.html"
+    },
+    {
+        paths: [
+            "/verify-email",
+            "/verify-email.html"
+        ],
+        file: "verify-email.html"
+    }
+].forEach(
+    page => {
+
+        app.get(
+            page.paths,
+            (
+                request,
+                response
+            ) => {
+
+                response.sendFile(
+                    path.join(
+                        PROJECT_ROOT,
+                        page.file
+                    )
+                );
+
+            }
+        );
+
+    }
+);
+
+
 /* ================================================= */
 /* API INFORMATION */
 /* ================================================= */
