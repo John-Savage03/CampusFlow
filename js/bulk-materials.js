@@ -1338,6 +1338,7 @@ async function cloudUploadFile(
                 body:
                     JSON.stringify({
                         courseId,
+
                         fileName:
                             file.name,
 
@@ -1364,6 +1365,29 @@ async function cloudUploadFile(
     }
 
 
+    /*
+        Supabase signed uploads use multipart FormData
+        even though the signed endpoint itself is a PUT.
+        Do not set Content-Type manually because the
+        browser must add the multipart boundary.
+    */
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "cacheControl",
+        "3600"
+    );
+
+
+    formData.append(
+        "",
+        file
+    );
+
+
     const uploadResponse =
         await fetch(
             prepared.body.signedUrl,
@@ -1372,13 +1396,12 @@ async function cloudUploadFile(
                     "PUT",
 
                 headers: {
-                    "Content-Type":
-                        file.type ||
-                        "application/octet-stream"
+                    "x-upsert":
+                        "false"
                 },
 
                 body:
-                    file
+                    formData
             }
         );
 
@@ -1387,26 +1410,56 @@ async function cloudUploadFile(
         !uploadResponse.ok
     ) {
 
-        await jsonApi(
-            "/api/cloud/files/" +
-            encodeURIComponent(
-                prepared.body.id
-            ),
-            {
-                method:
-                    "DELETE"
-            }
-        );
-
-
         throw new Error(
             `Upload failed for ${file.name}.`
         );
 
     }
 
-}
 
+    const confirmed =
+        await jsonApi(
+            "/api/cloud/files/confirm",
+            {
+                method:
+                    "POST",
+
+                body:
+                    JSON.stringify({
+                        id:
+                            prepared.body.id,
+
+                        path:
+                            prepared.body.path,
+
+                        courseId,
+
+                        fileName:
+                            file.name,
+
+                        mimeType:
+                            file.type ||
+                            "application/octet-stream",
+
+                        fileSize:
+                            file.size
+                    })
+            }
+        );
+
+
+    if (
+        !confirmed.response.ok
+    ) {
+
+        throw new Error(
+            confirmed.body.message ||
+            `Unable to register ${file.name} in CampusFlow.`
+        );
+
+    }
+
+}
 
 
 async function cloudOpenFile(
