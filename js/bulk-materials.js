@@ -1515,6 +1515,167 @@ async function cloudDeleteFile(
 
 
 
+
+async function migrateLocalFilesToCloud() {
+
+    if (!cloudFileMode) {
+
+        return;
+
+    }
+
+
+    const ownerId =
+        getCurrentAccountId();
+
+
+    if (!ownerId) {
+
+        return;
+
+    }
+
+
+    for (
+        const course of
+        getCourses()
+    ) {
+
+        let localRecords;
+
+
+        try {
+
+            localRecords =
+                await localFilesFor(
+                    ownerId,
+                    course.id
+                );
+
+        }
+
+        catch {
+
+            continue;
+
+        }
+
+
+        if (
+            localRecords.length ===
+            0
+        ) {
+
+            continue;
+
+        }
+
+
+        let cloudRecords =
+            [];
+
+
+        try {
+
+            cloudRecords =
+                await cloudListFiles(
+                    course.id
+                );
+
+        }
+
+        catch {
+
+            continue;
+
+        }
+
+
+        const existing =
+            new Set(
+                cloudRecords.map(
+                    record =>
+                        `${record.file_name}::${record.file_size}`
+                )
+            );
+
+
+        for (
+            const record of
+            localRecords
+        ) {
+
+            const key =
+                `${record.name}::${record.size}`;
+
+
+            if (
+                existing.has(
+                    key
+                )
+            ) {
+
+                await localDeleteRecord(
+                    record.id
+                );
+
+
+                continue;
+
+            }
+
+
+            try {
+
+                const file =
+                    new File(
+                        [
+                            record.blob
+                        ],
+                        record.name,
+                        {
+                            type:
+                                record.type ||
+                                record.blob?.type ||
+                                "application/octet-stream"
+                        }
+                    );
+
+
+                await cloudUploadFile(
+                    course.id,
+                    file
+                );
+
+
+                await localDeleteRecord(
+                    record.id
+                );
+
+
+                existing.add(
+                    key
+                );
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Existing local file could not be migrated:",
+                    record.name,
+                    error
+                );
+
+            }
+
+        }
+
+    }
+
+}
+
+
 /* ================================================= */
 /* RENDER */
 /* ================================================= */
@@ -1854,6 +2015,15 @@ export async function setupBulkMaterials() {
 
 
     await detectCloudFileMode();
+
+
+    if (
+        cloudFileMode
+    ) {
+
+        await migrateLocalFilesToCloud();
+
+    }
 
 
     addStyles();
