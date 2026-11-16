@@ -13,9 +13,6 @@
     "node": ">=22.5.0"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "@supabase/supabase-js": "^2.119.0",
-    "pg": "^8.23.1",
-    "dotenv": "^18.0.10"
+    "express": "^4.21.2"
   }
 }
