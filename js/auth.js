@@ -1,30 +1,19 @@
 /*
     auth.js
 
-    Handles both:
+    CampusFlow cloud-first authentication.
 
-    - signup.html
-    - login.html
+    When the server has cloud accounts configured:
+    - signup creates a server account
+    - login uses the server
+    - an existing browser-only account can be promoted
+      automatically after its local password verifies
 
-    CampusFlow accounts are stored locally in the
-    browser for this class-project prototype.
-
-    Passwords are not stored directly.
-
-    PBKDF2 + SHA-256 is used to create a salted
-    password hash before the account is saved.
+    When cloud accounts are not configured, the original
+    browser-only behavior remains available for development.
 */
 
-
 (function () {
-
-    "use strict";
-
-
-
-    /* ================================================= */
-    /* SETTINGS */
-    /* ================================================= */
 
     const USERS_KEY =
         "campusFlowUsers";
@@ -33,13 +22,6 @@
     const SESSION_KEY =
         "campusFlowCurrentUser";
 
-
-    /*
-        IMPORTANT:
-
-        This is the role storage key used by the
-        CURRENT version of CampusFlow state.js.
-    */
 
     const ROLE_KEY =
         "campusflow-v2-role";
@@ -57,11 +39,6 @@
         "index.html";
 
 
-
-    /* ================================================= */
-    /* DETECT PAGE */
-    /* ================================================= */
-
     const loginForm =
         document.getElementById(
             "loginForm"
@@ -74,60 +51,34 @@
         );
 
 
-    /*
-        If someone is already logged in and manually
-        visits login.html or signup.html, return them
-        to CampusFlow.
-    */
-
-    if (
-        (
-            loginForm ||
-            signUpForm
-        ) &&
-        sessionStorage.getItem(
-            SESSION_KEY
-        )
-    ) {
-
-        window.location.replace(
-            HOME_PAGE
-        );
+    let cloudConfigured =
+        false;
 
 
-        return;
-
-    }
-
-
-
-    /* ================================================= */
-    /* MESSAGE HELPER */
-    /* ================================================= */
 
     function showMessage(
-        text,
+        message,
         success = false
     ) {
 
-        const message =
+        const element =
             document.getElementById(
                 "message"
             );
 
 
-        if (!message) {
+        if (!element) {
 
             return;
 
         }
 
 
-        message.textContent =
-            text;
+        element.textContent =
+            message;
 
 
-        message.classList.toggle(
+        element.classList.toggle(
             "success",
             success
         );
@@ -136,9 +87,57 @@
 
 
 
-    /* ================================================= */
-    /* ACCOUNT STORAGE */
-    /* ================================================= */
+    async function api(
+        url,
+        options = {}
+    ) {
+
+        const response =
+            await fetch(
+                url,
+                {
+                    credentials:
+                        "same-origin",
+
+                    ...options,
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+
+                        ...(options.headers || {})
+                    }
+                }
+            );
+
+
+        let body =
+            {};
+
+
+        try {
+
+            body =
+                await response.json();
+
+        }
+
+        catch {
+
+            body =
+                {};
+
+        }
+
+
+        return {
+            response,
+            body
+        };
+
+    }
+
+
 
     function getUsers() {
 
@@ -148,7 +147,8 @@
                 JSON.parse(
                     localStorage.getItem(
                         USERS_KEY
-                    ) || "[]"
+                    ) ||
+                    "[]"
                 );
 
 
@@ -160,13 +160,7 @@
 
         }
 
-        catch (error) {
-
-            console.error(
-                "Unable to load accounts:",
-                error
-            );
-
+        catch {
 
             return [];
 
@@ -194,13 +188,7 @@
 
         }
 
-        catch (error) {
-
-            console.error(
-                "Unable to save accounts:",
-                error
-            );
-
+        catch {
 
             return false;
 
@@ -209,10 +197,6 @@
     }
 
 
-
-    /* ================================================= */
-    /* BYTE / HEX HELPERS */
-    /* ================================================= */
 
     function toHex(
         bytes
@@ -240,8 +224,10 @@
     ) {
 
         if (
-            typeof text !== "string" ||
-            text.length % 2 !== 0 ||
+            typeof text !==
+                "string" ||
+            text.length % 2 !==
+                0 ||
             !/^[0-9a-f]+$/i.test(
                 text
             )
@@ -284,21 +270,11 @@
 
 
 
-    /* ================================================= */
-    /* PASSWORD HASH */
-    /* ================================================= */
-
     async function makeHash(
         password,
         salt,
         rounds
     ) {
-
-        /*
-            Web Crypto requires a secure context.
-
-            localhost / Live Server works.
-        */
 
         if (
             !window.crypto ||
@@ -306,7 +282,7 @@
         ) {
 
             throw new Error(
-                "Web Crypto is unavailable. Open CampusFlow through Live Server."
+                "Web Crypto is unavailable."
             );
 
         }
@@ -321,27 +297,19 @@
 
         const key =
             await crypto.subtle.importKey(
-
                 "raw",
-
                 passwordBytes,
-
                 "PBKDF2",
-
                 false,
-
                 [
                     "deriveBits"
                 ]
-
             );
 
 
         const bits =
             await crypto.subtle.deriveBits(
-
                 {
-
                     name:
                         "PBKDF2",
 
@@ -352,13 +320,9 @@
 
                     hash:
                         "SHA-256"
-
                 },
-
                 key,
-
                 256
-
             );
 
 
@@ -372,60 +336,246 @@
 
 
 
-    /* ================================================= */
-    /* START LOGIN SESSION */
-    /* ================================================= */
-
     function startSession(
         user
     ) {
 
-        /*
-            sessionStorage means the user remains
-            logged in for the current browser tab/session.
-        */
+        const publicUser = {
+            username:
+                user.username,
+
+            role:
+                user.role
+        };
+
 
         sessionStorage.setItem(
-
             SESSION_KEY,
-
-            JSON.stringify({
-
-                username:
-                    user.username,
-
-                role:
-                    user.role
-
-            })
-
+            JSON.stringify(
+                publicUser
+            )
         );
 
 
-        /*
-            Also update CampusFlow's Student/Professor
-            role storage.
-        */
-
         localStorage.setItem(
-
             ROLE_KEY,
-
             JSON.stringify(
                 user.role
             )
-
         );
 
     }
 
 
 
-    /* ================================================= */
-    /* SIGNUP PAGE */
-    /* ================================================= */
+    async function findVerifiedLocalUser(
+        username,
+        password
+    ) {
 
-    if (signUpForm) {
+        const user =
+            getUsers()
+                .find(
+                    item =>
+                        String(
+                            item.username
+                        )
+                            .toLowerCase() ===
+                        String(
+                            username
+                        )
+                            .toLowerCase()
+                );
+
+
+        if (!user) {
+
+            return null;
+
+        }
+
+
+        try {
+
+            const rounds =
+                Number.isInteger(
+                    user.rounds
+                )
+                    ? user.rounds
+                    : PBKDF2_ROUNDS;
+
+
+            const attempt =
+                await makeHash(
+                    password,
+                    fromHex(
+                        user.salt
+                    ),
+                    rounds
+                );
+
+
+            return attempt ===
+                user.hash
+                    ? user
+                    : null;
+
+        }
+
+        catch {
+
+            return null;
+
+        }
+
+    }
+
+
+
+    async function createLocalAccount({
+        username,
+        password,
+        role
+    }) {
+
+        const users =
+            getUsers();
+
+
+        if (
+            users.some(
+                user =>
+                    user.username
+                        .toLowerCase() ===
+                    username
+                        .toLowerCase()
+            )
+        ) {
+
+            throw new Error(
+                "That username is already taken."
+            );
+
+        }
+
+
+        const salt =
+            crypto.getRandomValues(
+                new Uint8Array(
+                    16
+                )
+            );
+
+
+        const user = {
+            username,
+            role,
+            salt:
+                toHex(
+                    salt
+                ),
+            rounds:
+                PBKDF2_ROUNDS,
+            hash:
+                await makeHash(
+                    password,
+                    salt,
+                    PBKDF2_ROUNDS
+                ),
+            createdAt:
+                new Date()
+                    .toISOString()
+        };
+
+
+        users.push(
+            user
+        );
+
+
+        if (
+            !saveUsers(
+                users
+            )
+        ) {
+
+            throw new Error(
+                "Account storage failed."
+            );
+
+        }
+
+
+        return user;
+
+    }
+
+
+
+    async function detectCloud() {
+
+        try {
+
+            const {
+                response,
+                body
+            } =
+                await api(
+                    "/api/cloud/status"
+                );
+
+
+            cloudConfigured =
+                response.ok &&
+                Boolean(
+                    body.configured
+                );
+
+
+            if (
+                cloudConfigured
+            ) {
+
+                const me =
+                    await api(
+                        "/api/auth/me"
+                    );
+
+
+                if (
+                    me.response.ok &&
+                    me.body.user
+                ) {
+
+                    startSession(
+                        me.body.user
+                    );
+
+
+                    window.location.replace(
+                        HOME_PAGE
+                    );
+
+                }
+
+            }
+
+        }
+
+        catch {
+
+            cloudConfigured =
+                false;
+
+        }
+
+    }
+
+
+
+    if (
+        signUpForm
+    ) {
 
         const passwordInput =
             document.getElementById(
@@ -437,7 +587,6 @@
             document.getElementById(
                 "RetypePassword"
             );
-
 
 
         function checkPasswords() {
@@ -452,19 +601,15 @@
             }
 
 
-            retypeInput.setCustomValidity(
-
-                passwordInput.value ===
-                retypeInput.value
-
-                    ? ""
-
-                    : "Passwords do not match."
-
-            );
+            retypeInput
+                .setCustomValidity(
+                    passwordInput.value ===
+                    retypeInput.value
+                        ? ""
+                        : "Passwords do not match."
+                );
 
         }
-
 
 
         passwordInput
@@ -481,17 +626,16 @@
             );
 
 
-
         signUpForm.addEventListener(
-
             "submit",
-
             async event => {
 
                 event.preventDefault();
 
 
-                showMessage("");
+                showMessage(
+                    ""
+                );
 
 
                 const username =
@@ -500,17 +644,20 @@
                             "CreateUsername"
                         )
                         ?.value
-                        .trim() || "";
+                        .trim() ||
+                    "";
 
 
                 const password =
                     passwordInput
-                        ?.value || "";
+                        ?.value ||
+                    "";
 
 
                 const retype =
                     retypeInput
-                        ?.value || "";
+                        ?.value ||
+                    "";
 
 
                 const role =
@@ -518,29 +665,17 @@
                         .getElementById(
                             "Role"
                         )
-                        ?.value || "";
-
-
-
-                /* ---------------- VALIDATION ---------------- */
-
-                if (
-                    username.length < 3
-                ) {
-
-                    return showMessage(
-                        "Username must be at least 3 characters."
-                    );
-
-                }
+                        ?.value ||
+                    "";
 
 
                 if (
+                    username.length < 3 ||
                     username.length > 40
                 ) {
 
                     return showMessage(
-                        "Username must be 40 characters or less."
+                        "Username must be between 3 and 40 characters."
                     );
 
                 }
@@ -552,7 +687,7 @@
                 ) {
 
                     return showMessage(
-                        `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`
+                        "Password must be at least 8 characters."
                     );
 
                 }
@@ -586,31 +721,6 @@
                 }
 
 
-
-                /* ---------------- DUPLICATE USERNAME ---------------- */
-
-                const users =
-                    getUsers();
-
-
-                if (
-                    users.some(
-                        user =>
-                            user.username
-                                .toLowerCase() ===
-                            username
-                                .toLowerCase()
-                    )
-                ) {
-
-                    return showMessage(
-                        "That username is already taken."
-                    );
-
-                }
-
-
-
                 const button =
                     document.getElementById(
                         "SignUpButton"
@@ -625,75 +735,60 @@
                 }
 
 
-
-                /* ---------------- CREATE ACCOUNT ---------------- */
-
                 try {
 
-                    const salt =
-                        crypto.getRandomValues(
-                            new Uint8Array(
-                                16
-                            )
-                        );
-
-
-                    const hash =
-                        await makeHash(
-
-                            password,
-
-                            salt,
-
-                            PBKDF2_ROUNDS
-
-                        );
-
-
-                    const user = {
-
-                        username,
-
-                        role,
-
-                        salt:
-                            toHex(
-                                salt
-                            ),
-
-                        rounds:
-                            PBKDF2_ROUNDS,
-
-                        hash,
-
-                        createdAt:
-                            new Date()
-                                .toISOString()
-
-                    };
-
-
-                    users.push(
-                        user
-                    );
+                    let user;
 
 
                     if (
-                        !saveUsers(
-                            users
-                        )
+                        cloudConfigured
                     ) {
 
-                        throw new Error(
-                            "Account storage failed."
-                        );
+                        const result =
+                            await api(
+                                "/api/auth/signup",
+                                {
+                                    method:
+                                        "POST",
+
+                                    body:
+                                        JSON.stringify({
+                                            username,
+                                            password,
+                                            role
+                                        })
+                                }
+                            );
+
+
+                        if (
+                            !result.response.ok
+                        ) {
+
+                            throw new Error(
+                                result.body.message ||
+                                "Unable to create the account."
+                            );
+
+                        }
+
+
+                        user =
+                            result.body.user;
 
                     }
 
+                    else {
 
-                    /*
-                        Log the new user in immediately.
-                    */
+                        user =
+                            await createLocalAccount({
+                                username,
+                                password,
+                                role
+                            });
+
+                    }
+
 
                     startSession(
                         user
@@ -708,13 +803,9 @@
 
                 catch (error) {
 
-                    console.error(
-                        error
-                    );
-
-
                     showMessage(
-                        "Unable to create the account. Make sure CampusFlow is open with Live Server."
+                        error.message ||
+                        "Unable to create the account."
                     );
 
 
@@ -728,29 +819,26 @@
                 }
 
             }
-
         );
 
     }
 
 
 
-    /* ================================================= */
-    /* LOGIN PAGE */
-    /* ================================================= */
-
-    if (loginForm) {
+    if (
+        loginForm
+    ) {
 
         loginForm.addEventListener(
-
             "submit",
-
             async event => {
 
                 event.preventDefault();
 
 
-                showMessage("");
+                showMessage(
+                    ""
+                );
 
 
                 const username =
@@ -759,7 +847,8 @@
                             "Username"
                         )
                         ?.value
-                        .trim() || "";
+                        .trim() ||
+                    "";
 
 
                 const password =
@@ -767,41 +856,8 @@
                         .getElementById(
                             "Password"
                         )
-                        ?.value || "";
-
-
-                /*
-                    Find username without making
-                    capitalization matter.
-                */
-
-                const user =
-                    getUsers()
-                        .find(
-                            savedUser =>
-
-                                savedUser.username
-                                    .toLowerCase() ===
-
-                                username
-                                    .toLowerCase()
-
-                        );
-
-
-                /*
-                    Use the same message for an invalid
-                    username and password.
-                */
-
-                if (!user) {
-
-                    return showMessage(
-                        "Wrong username or password."
-                    );
-
-                }
-
+                        ?.value ||
+                    "";
 
 
                 const button =
@@ -818,35 +874,113 @@
                 }
 
 
-
                 try {
 
-                    const rounds =
-                        Number.isInteger(
-                            user.rounds
-                        )
-                            ? user.rounds
-                            : PBKDF2_ROUNDS;
-
-
-                    const attempt =
-                        await makeHash(
-
-                            password,
-
-                            fromHex(
-                                user.salt
-                            ),
-
-                            rounds
-
-                        );
+                    let user =
+                        null;
 
 
                     if (
-                        attempt !==
-                        user.hash
+                        cloudConfigured
                     ) {
+
+                        const result =
+                            await api(
+                                "/api/auth/login",
+                                {
+                                    method:
+                                        "POST",
+
+                                    body:
+                                        JSON.stringify({
+                                            username,
+                                            password
+                                        })
+                                }
+                            );
+
+
+                        if (
+                            result.response.ok
+                        ) {
+
+                            user =
+                                result.body.user;
+
+                        }
+
+                        else if (
+                            result.response.status ===
+                            401
+                        ) {
+
+                            /*
+                                Existing browser-only account migration.
+
+                                Verify the old local password first.
+                                If correct, create the same account in
+                                the cloud and continue normally.
+                            */
+
+                            const localUser =
+                                await findVerifiedLocalUser(
+                                    username,
+                                    password
+                                );
+
+
+                            if (
+                                localUser
+                            ) {
+
+                                const migration =
+                                    await api(
+                                        "/api/auth/signup",
+                                        {
+                                            method:
+                                                "POST",
+
+                                            body:
+                                                JSON.stringify({
+                                                    username:
+                                                        localUser.username,
+
+                                                    password,
+
+                                                    role:
+                                                        localUser.role
+                                                })
+                                        }
+                                    );
+
+
+                                if (
+                                    migration.response.ok
+                                ) {
+
+                                    user =
+                                        migration.body.user;
+
+                                }
+
+                            }
+
+                        }
+
+                    }
+
+                    else {
+
+                        user =
+                            await findVerifiedLocalUser(
+                                username,
+                                password
+                            );
+
+                    }
+
+
+                    if (!user) {
 
                         showMessage(
                             "Wrong username or password."
@@ -866,10 +1000,6 @@
                     }
 
 
-                    /*
-                        Correct login.
-                    */
-
                     startSession(
                         user
                     );
@@ -889,7 +1019,7 @@
 
 
                     showMessage(
-                        "Unable to log in. Make sure CampusFlow is open with Live Server."
+                        "Unable to log in."
                     );
 
 
@@ -903,9 +1033,12 @@
                 }
 
             }
-
         );
 
     }
+
+
+
+    detectCloud();
 
 })();

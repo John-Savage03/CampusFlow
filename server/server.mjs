@@ -43,6 +43,14 @@ import {
 from "./database.mjs";
 
 
+import {
+    registerCloudRoutes
+}
+from "./cloud-routes.mjs";
+
+
+
+
 
 /* ================================================= */
 /* FILE PATHS */
@@ -86,6 +94,18 @@ const app =
 
 
 /*
+    Render terminates HTTPS before forwarding requests
+    to this Node process. Trust the first proxy so
+    secure login cookies are detected correctly.
+*/
+
+app.set(
+    "trust proxy",
+    1
+);
+
+
+/*
     Railway automatically supplies PORT.
 
     When running locally, CampusFlow uses port 3000.
@@ -116,6 +136,8 @@ const database =
 
 
 
+
+
 /* ================================================= */
 /* EXPRESS SETTINGS */
 /* ================================================= */
@@ -135,7 +157,7 @@ app.disable(
 
 app.use(
     express.json({
-        limit: "1mb"
+        limit: "5mb"
     })
 );
 
@@ -184,6 +206,16 @@ app.use(
         next();
 
     }
+);
+
+
+
+/* ================================================= */
+/* CLOUD ACCOUNT + SYNC ROUTES */
+/* ================================================= */
+
+registerCloudRoutes(
+    app
 );
 
 
@@ -523,7 +555,15 @@ app.get(
 
                 "/api/health",
 
-                "/api/database"
+                "/api/database",
+
+                "/api/cloud/status",
+
+                "/api/auth/login",
+
+                "/api/auth/signup",
+
+                "/api/cloud/snapshot"
 
             ]
 
@@ -651,7 +691,8 @@ function shutdown(
 
 
     server.close(
-        () => {
+        async () => {
+
 
             try {
 
