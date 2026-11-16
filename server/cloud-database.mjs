@@ -23,8 +23,10 @@ const scrypt = promisify(scryptCallback);
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
-const SUPABASE_SERVICE_ROLE_KEY =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_SECRET_KEY =
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    "";
 const STORAGE_BUCKET =
     process.env.SUPABASE_STORAGE_BUCKET || "campusflow-materials";
 
@@ -38,7 +40,7 @@ export function isCloudConfigured() {
 export function isCloudFileStorageConfigured() {
     return Boolean(
         SUPABASE_URL &&
-        SUPABASE_SERVICE_ROLE_KEY
+        SUPABASE_SECRET_KEY
     );
 }
 
@@ -71,7 +73,7 @@ function getStorageClient() {
 
         storageClient = createClient(
             SUPABASE_URL,
-            SUPABASE_SERVICE_ROLE_KEY,
+            SUPABASE_SECRET_KEY,
             {
                 auth: {
                     persistSession: false,
