@@ -1,32 +1,25 @@
 /*
     cloud-routes.mjs
 
-    Cloud authentication, account sync, and
-    private course-file endpoints for CampusFlow.
+    CampusFlow cloud proxy.
+
+    The privileged cloud logic runs in Supabase Edge Functions.
+    Render keeps the user's custom session token in an HttpOnly
+    cookie and proxies requests without storing Supabase secrets.
 */
-
-import {
-    createCloudUser,
-    createCloudSession,
-    getCloudUserFromSession,
-    deleteCloudSession,
-    verifyCloudUser,
-    getCloudSnapshot,
-    saveCloudSnapshot,
-    createCloudFileUpload,
-    listCloudFiles,
-    createCloudFileDownloadUrl,
-    deleteCloudFile,
-    isCloudConfigured,
-    isCloudFileStorageConfigured
-} from "./cloud-database.mjs";
-
 
 const COOKIE_NAME =
     "campusflow_session";
 
 
-function readCookies(request) {
+const CLOUD_API_URL =
+    process.env.CAMPUSFLOW_CLOUD_API_URL ||
+    "https://gpjkrmokhypzjqzovmfo.supabase.co/functions/v1/campusflow-api";
+
+
+function readCookies(
+    request
+) {
 
     const header =
         request.headers.cookie || "";
@@ -76,24 +69,42 @@ function sessionToken(
     request
 ) {
 
-    return readCookies(
-        request
-    )[COOKIE_NAME] || "";
+    return (
+        readCookies(
+            request
+        )[COOKIE_NAME] ||
+        ""
+    );
+
+}
+
+
+
+function secureCookie(
+    request
+) {
+
+    return (
+        request.secure ||
+        request.headers[
+            "x-forwarded-proto"
+        ] === "https" ||
+        process.env.RENDER ===
+            "true" ||
+        process.env.NODE_ENV ===
+            "production"
+    );
 
 }
 
 
 
 function setSessionCookie(
+    request,
     response,
     token,
     expiresAt
 ) {
-
-    const secure =
-        process.env.NODE_ENV ===
-        "production";
-
 
     response.cookie(
 
@@ -105,13 +116,18 @@ function setSessionCookie(
             httpOnly:
                 true,
 
-            secure,
+            secure:
+                secureCookie(
+                    request
+                ),
 
             sameSite:
                 "lax",
 
             expires:
-                expiresAt,
+                new Date(
+                    expiresAt
+                ),
 
             path:
                 "/"
@@ -124,6 +140,7 @@ function setSessionCookie(
 
 
 function clearSessionCookie(
+    request,
     response
 ) {
 
@@ -136,8 +153,9 @@ function clearSessionCookie(
                 true,
 
             secure:
-                process.env.NODE_ENV ===
-                "production",
+                secureCookie(
+                    request
+                ),
 
             sameSite:
                 "lax",
@@ -152,98 +170,132 @@ function clearSessionCookie(
 
 
 
-async function requireCloudUser(
-    request,
-    response,
-    next
+async function callCloud(
+    action,
+    payload = {},
+    token = ""
 ) {
 
-    if (!isCloudConfigured()) {
-
-        response
-            .status(503)
-            .json({
-                status:
-                    "cloud-not-configured",
-
-                message:
-                    "CampusFlow cloud accounts are not configured on this server."
-            });
+    const headers = {
+        "content-type":
+            "application/json"
+    };
 
 
-        return;
+    if (token) {
+
+        headers.authorization =
+            `Bearer ${token}`;
 
     }
 
 
+    const cloudResponse =
+        await fetch(
+            CLOUD_API_URL,
+            {
+                method:
+                    "POST",
+
+                headers,
+
+                body:
+                    JSON.stringify({
+                        action,
+                        ...payload
+                    })
+            }
+        );
+
+
+    let body =
+        {};
+
+
     try {
 
-        const user =
-            await getCloudUserFromSession(
-                sessionToken(
-                    request
-                )
-            );
+        body =
+            await cloudResponse.json();
+
+    }
+
+    catch {
+
+        body = {
+            status:
+                "error",
+
+            message:
+                "Cloud service returned an invalid response."
+        };
+
+    }
 
 
-        if (!user) {
+    return {
+        status:
+            cloudResponse.status,
 
-            response
-                .status(401)
-                .json({
-                    status:
-                        "unauthorized"
-                });
+        ok:
+            cloudResponse.ok,
 
+        body
+    };
 
-            return;
-
-        }
+}
 
 
-        request.cloudUser =
-            user;
+
+function sendCloudResult(
+    response,
+    result
+) {
+
+    response
+        .status(
+            result.status
+        )
+        .json(
+            result.body
+        );
+
+}
 
 
-        next();
+
+async function safelyCallCloud(
+    response,
+    work
+) {
+
+    try {
+
+        return await work();
 
     }
 
     catch (error) {
 
         console.error(
-            "Cloud authentication check failed:",
+            "CampusFlow cloud proxy error:",
             error
         );
 
 
         response
-            .status(500)
+            .status(503)
             .json({
                 status:
-                    "error",
+                    "cloud-unavailable",
 
                 message:
-                    "Unable to verify the login session."
+                    "CampusFlow cloud service is temporarily unavailable."
             });
 
+
+        return null;
+
     }
-
-}
-
-
-
-function publicUser(
-    user
-) {
-
-    return {
-        username:
-            user.username,
-
-        role:
-            user.role
-    };
 
 }
 
@@ -262,10 +314,13 @@ export function registerCloudRoutes(
 
             response.json({
                 configured:
-                    isCloudConfigured(),
+                    true,
 
                 fileStorageConfigured:
-                    isCloudFileStorageConfigured()
+                    true,
+
+                backend:
+                    "supabase-edge"
             });
 
         }
@@ -279,94 +334,53 @@ export function registerCloudRoutes(
             response
         ) => {
 
-            if (!isCloudConfigured()) {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                return response
-                    .status(503)
-                    .json({
-                        status:
-                            "cloud-not-configured"
-                    });
+                    const result =
+                        await callCloud(
+                            "signup",
+                            {
+                                username:
+                                    request.body?.username,
 
-            }
+                                password:
+                                    request.body?.password,
 
-
-            try {
-
-                const user =
-                    await createCloudUser({
-                        username:
-                            request.body?.username,
-
-                        password:
-                            request.body?.password,
-
-                        role:
-                            request.body?.role
-                    });
+                                role:
+                                    request.body?.role
+                            }
+                        );
 
 
-                const session =
-                    await createCloudSession(
-                        user.id
+                    if (
+                        result.ok &&
+                        result.body?.sessionToken &&
+                        result.body?.expiresAt
+                    ) {
+
+                        setSessionCookie(
+                            request,
+                            response,
+                            result.body.sessionToken,
+                            result.body.expiresAt
+                        );
+
+
+                        delete result.body.sessionToken;
+                        delete result.body.expiresAt;
+
+                    }
+
+
+                    sendCloudResult(
+                        response,
+                        result
                     );
 
-
-                setSessionCookie(
-                    response,
-                    session.token,
-                    session.expiresAt
-                );
-
-
-                response
-                    .status(201)
-                    .json({
-                        status:
-                            "ok",
-
-                        user:
-                            publicUser(
-                                user
-                            )
-                    });
-
-            }
-
-            catch (error) {
-
-                const known =
-                    [
-                        "USERNAME_TAKEN",
-                        "INVALID_USERNAME",
-                        "INVALID_PASSWORD",
-                        "INVALID_ROLE"
-                    ].includes(
-                        error?.code
-                    );
-
-
-                response
-                    .status(
-                        known
-                            ? 400
-                            : 500
-                    )
-                    .json({
-                        status:
-                            "error",
-
-                        code:
-                            error?.code ||
-                            "SIGNUP_FAILED",
-
-                        message:
-                            known
-                                ? error.message
-                                : "Unable to create the cloud account."
-                    });
-
-            }
+                }
+            );
 
         }
     );
@@ -379,89 +393,50 @@ export function registerCloudRoutes(
             response
         ) => {
 
-            if (!isCloudConfigured()) {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                return response
-                    .status(503)
-                    .json({
-                        status:
-                            "cloud-not-configured"
-                    });
+                    const result =
+                        await callCloud(
+                            "login",
+                            {
+                                username:
+                                    request.body?.username,
 
-            }
-
-
-            try {
-
-                const user =
-                    await verifyCloudUser({
-                        username:
-                            request.body?.username,
-
-                        password:
-                            request.body?.password
-                    });
+                                password:
+                                    request.body?.password
+                            }
+                        );
 
 
-                if (!user) {
+                    if (
+                        result.ok &&
+                        result.body?.sessionToken &&
+                        result.body?.expiresAt
+                    ) {
 
-                    return response
-                        .status(401)
-                        .json({
-                            status:
-                                "invalid-login",
-
-                            message:
-                                "Wrong username or password."
-                        });
-
-                }
+                        setSessionCookie(
+                            request,
+                            response,
+                            result.body.sessionToken,
+                            result.body.expiresAt
+                        );
 
 
-                const session =
-                    await createCloudSession(
-                        user.id
+                        delete result.body.sessionToken;
+                        delete result.body.expiresAt;
+
+                    }
+
+
+                    sendCloudResult(
+                        response,
+                        result
                     );
 
-
-                setSessionCookie(
-                    response,
-                    session.token,
-                    session.expiresAt
-                );
-
-
-                response.json({
-                    status:
-                        "ok",
-
-                    user:
-                        publicUser(
-                            user
-                        )
-                });
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud login failed:",
-                    error
-                );
-
-
-                response
-                    .status(500)
-                    .json({
-                        status:
-                            "error",
-
-                        message:
-                            "Unable to log in."
-                    });
-
-            }
+                }
+            );
 
         }
     );
@@ -474,35 +449,33 @@ export function registerCloudRoutes(
             response
         ) => {
 
-            try {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                await deleteCloudSession(
-                    sessionToken(
-                        request
-                    )
-                );
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud logout cleanup failed:",
-                    error
-                );
-
-            }
+                    const result =
+                        await callCloud(
+                            "logout",
+                            {},
+                            sessionToken(
+                                request
+                            )
+                        );
 
 
-            clearSessionCookie(
-                response
+                    clearSessionCookie(
+                        request,
+                        response
+                    );
+
+
+                    sendCloudResult(
+                        response,
+                        result
+                    );
+
+                }
             );
-
-
-            response.json({
-                status:
-                    "ok"
-            });
 
         }
     );
@@ -510,21 +483,45 @@ export function registerCloudRoutes(
 
     app.get(
         "/api/auth/me",
-        requireCloudUser,
-        (
+        async (
             request,
             response
         ) => {
 
-            response.json({
-                status:
-                    "ok",
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                user:
-                    publicUser(
-                        request.cloudUser
-                    )
-            });
+                    const result =
+                        await callCloud(
+                            "me",
+                            {},
+                            sessionToken(
+                                request
+                            )
+                        );
+
+
+                    if (
+                        result.status ===
+                        401
+                    ) {
+
+                        clearSessionCookie(
+                            request,
+                            response
+                        );
+
+                    }
+
+
+                    sendCloudResult(
+                        response,
+                        result
+                    );
+
+                }
+            );
 
         }
     );
@@ -532,52 +529,32 @@ export function registerCloudRoutes(
 
     app.get(
         "/api/cloud/snapshot",
-        requireCloudUser,
         async (
             request,
             response
         ) => {
 
-            try {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                const snapshot =
-                    await getCloudSnapshot(
-                        request.cloudUser.id
+                    const result =
+                        await callCloud(
+                            "getSnapshot",
+                            {},
+                            sessionToken(
+                                request
+                            )
+                        );
+
+
+                    sendCloudResult(
+                        response,
+                        result
                     );
 
-
-                response.json({
-                    status:
-                        "ok",
-
-                    data:
-                        snapshot.data,
-
-                    updatedAt:
-                        snapshot.updatedAt
-                });
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud snapshot read failed:",
-                    error
-                );
-
-
-                response
-                    .status(500)
-                    .json({
-                        status:
-                            "error",
-
-                        message:
-                            "Unable to load cloud data."
-                    });
-
-            }
+                }
+            );
 
         }
     );
@@ -585,75 +562,35 @@ export function registerCloudRoutes(
 
     app.put(
         "/api/cloud/snapshot",
-        requireCloudUser,
         async (
             request,
             response
         ) => {
 
-            try {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                const data =
-                    request.body?.data;
-
-
-                if (
-                    !data ||
-                    typeof data !==
-                        "object" ||
-                    Array.isArray(
-                        data
-                    )
-                ) {
-
-                    return response
-                        .status(400)
-                        .json({
-                            status:
-                                "error",
-
-                            message:
-                                "Cloud data must be an object."
-                        });
-
-                }
+                    const result =
+                        await callCloud(
+                            "saveSnapshot",
+                            {
+                                data:
+                                    request.body?.data
+                            },
+                            sessionToken(
+                                request
+                            )
+                        );
 
 
-                const updatedAt =
-                    await saveCloudSnapshot(
-                        request.cloudUser.id,
-                        data
+                    sendCloudResult(
+                        response,
+                        result
                     );
 
-
-                response.json({
-                    status:
-                        "ok",
-
-                    updatedAt
-                });
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud snapshot save failed:",
-                    error
-                );
-
-
-                response
-                    .status(500)
-                    .json({
-                        status:
-                            "error",
-
-                        message:
-                            "Unable to save cloud data."
-                    });
-
-            }
+                }
+            );
 
         }
     );
@@ -661,71 +598,38 @@ export function registerCloudRoutes(
 
     app.get(
         "/api/cloud/files",
-        requireCloudUser,
         async (
             request,
             response
         ) => {
 
-            try {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                const courseId =
-                    String(
-                        request.query.courseId ||
-                        ""
+                    const result =
+                        await callCloud(
+                            "listFiles",
+                            {
+                                courseId:
+                                    String(
+                                        request.query.courseId ||
+                                        ""
+                                    )
+                            },
+                            sessionToken(
+                                request
+                            )
+                        );
+
+
+                    sendCloudResult(
+                        response,
+                        result
                     );
-
-
-                if (!courseId) {
-
-                    return response
-                        .status(400)
-                        .json({
-                            status:
-                                "error",
-
-                            message:
-                                "courseId is required."
-                        });
 
                 }
-
-
-                const files =
-                    await listCloudFiles(
-                        request.cloudUser.id,
-                        courseId
-                    );
-
-
-                response.json({
-                    status:
-                        "ok",
-
-                    files
-                });
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud file list failed:",
-                    error
-                );
-
-
-                response
-                    .status(500)
-                    .json({
-                        status:
-                            "error",
-
-                        message:
-                            "Unable to list cloud files."
-                    });
-
-            }
+            );
 
         }
     );
@@ -733,82 +637,95 @@ export function registerCloudRoutes(
 
     app.post(
         "/api/cloud/files/upload-url",
-        requireCloudUser,
         async (
             request,
             response
         ) => {
 
-            if (
-                !isCloudFileStorageConfigured()
-            ) {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                return response
-                    .status(503)
-                    .json({
-                        status:
-                            "storage-not-configured"
-                    });
+                    const result =
+                        await callCloud(
+                            "createUpload",
+                            {
+                                courseId:
+                                    request.body?.courseId,
 
-            }
+                                fileName:
+                                    request.body?.fileName,
 
+                                mimeType:
+                                    request.body?.mimeType,
 
-            try {
-
-                const upload =
-                    await createCloudFileUpload({
-                        userId:
-                            request.cloudUser.id,
-
-                        courseId:
-                            request.body?.courseId,
-
-                        fileName:
-                            request.body?.fileName,
-
-                        mimeType:
-                            request.body?.mimeType,
-
-                        fileSize:
-                            request.body?.fileSize
-                    });
+                                fileSize:
+                                    request.body?.fileSize
+                            },
+                            sessionToken(
+                                request
+                            )
+                        );
 
 
-                response
-                    .status(201)
-                    .json({
-                        status:
-                            "ok",
+                    sendCloudResult(
+                        response,
+                        result
+                    );
 
-                        ...upload
-                    });
+                }
+            );
 
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud upload URL creation failed:",
-                    error
-                );
+        }
+    );
 
 
-                response
-                    .status(400)
-                    .json({
-                        status:
-                            "error",
+    app.post(
+        "/api/cloud/files/confirm",
+        async (
+            request,
+            response
+        ) => {
 
-                        code:
-                            error?.code ||
-                            "UPLOAD_URL_FAILED",
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                        message:
-                            error?.message ||
-                            "Unable to prepare the upload."
-                    });
+                    const result =
+                        await callCloud(
+                            "confirmUpload",
+                            {
+                                id:
+                                    request.body?.id,
 
-            }
+                                path:
+                                    request.body?.path,
+
+                                courseId:
+                                    request.body?.courseId,
+
+                                fileName:
+                                    request.body?.fileName,
+
+                                mimeType:
+                                    request.body?.mimeType,
+
+                                fileSize:
+                                    request.body?.fileSize
+                            },
+                            sessionToken(
+                                request
+                            )
+                        );
+
+
+                    sendCloudResult(
+                        response,
+                        result
+                    );
+
+                }
+            );
 
         }
     );
@@ -816,72 +733,39 @@ export function registerCloudRoutes(
 
     app.get(
         "/api/cloud/files/:id/url",
-        requireCloudUser,
         async (
             request,
             response
         ) => {
 
-            try {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                const result =
-                    await createCloudFileDownloadUrl({
-                        userId:
-                            request.cloudUser.id,
+                    const result =
+                        await callCloud(
+                            "fileUrl",
+                            {
+                                fileId:
+                                    request.params.id,
 
-                        fileId:
-                            request.params.id,
+                                download:
+                                    request.query.download ===
+                                    "1"
+                            },
+                            sessionToken(
+                                request
+                            )
+                        );
 
-                        download:
-                            request.query.download ===
-                            "1"
-                    });
 
-
-                if (!result) {
-
-                    return response
-                        .status(404)
-                        .json({
-                            status:
-                                "not-found"
-                        });
+                    sendCloudResult(
+                        response,
+                        result
+                    );
 
                 }
-
-
-                response.json({
-                    status:
-                        "ok",
-
-                    file:
-                        result.file,
-
-                    signedUrl:
-                        result.signedUrl
-                });
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud file URL failed:",
-                    error
-                );
-
-
-                response
-                    .status(500)
-                    .json({
-                        status:
-                            "error",
-
-                        message:
-                            "Unable to open that file."
-                    });
-
-            }
+            );
 
         }
     );
@@ -889,58 +773,35 @@ export function registerCloudRoutes(
 
     app.delete(
         "/api/cloud/files/:id",
-        requireCloudUser,
         async (
             request,
             response
         ) => {
 
-            try {
+            await safelyCallCloud(
+                response,
+                async () => {
 
-                const deleted =
-                    await deleteCloudFile({
-                        userId:
-                            request.cloudUser.id,
-
-                        fileId:
-                            request.params.id
-                    });
-
-
-                response
-                    .status(
-                        deleted
-                            ? 200
-                            : 404
-                    )
-                    .json({
-                        status:
-                            deleted
-                                ? "ok"
-                                : "not-found"
-                    });
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Cloud file delete failed:",
-                    error
-                );
+                    const result =
+                        await callCloud(
+                            "deleteFile",
+                            {
+                                fileId:
+                                    request.params.id
+                            },
+                            sessionToken(
+                                request
+                            )
+                        );
 
 
-                response
-                    .status(500)
-                    .json({
-                        status:
-                            "error",
+                    sendCloudResult(
+                        response,
+                        result
+                    );
 
-                        message:
-                            "Unable to delete that file."
-                    });
-
-            }
+                }
+            );
 
         }
     );
