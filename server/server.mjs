@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 /*
     server.mjs
 
@@ -161,7 +163,7 @@ app.disable(
 
 app.use(
     express.json({
-        limit: "1mb"
+        limit: "5mb"
     })
 );
 
