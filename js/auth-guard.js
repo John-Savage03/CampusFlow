@@ -358,7 +358,32 @@ export function setupAuthenticatedInterface(
 
     logout.addEventListener(
         "click",
-        () => {
+        async () => {
+
+            try {
+
+                await fetch(
+                    "/api/auth/logout",
+                    {
+                        method:
+                            "POST",
+
+                        credentials:
+                            "same-origin"
+                    }
+                );
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Cloud logout failed:",
+                    error
+                );
+
+            }
+
 
             sessionStorage.removeItem(
                 SESSION_KEY
