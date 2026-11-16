@@ -154,6 +154,42 @@ export async function initializeCloudDatabase() {
         "DELETE FROM cloud_sessions WHERE expires_at <= NOW()"
     );
 
+
+    if (
+        isCloudFileStorageConfigured()
+    ) {
+
+        const {
+            error
+        } =
+            await getStorageClient()
+                .storage
+                .createBucket(
+                    STORAGE_BUCKET,
+                    {
+                        public:
+                            false,
+
+                        fileSizeLimit:
+                            "20MB"
+                    }
+                );
+
+
+        if (
+            error &&
+            !/already exists|duplicate/i.test(
+                error.message || ""
+            )
+        ) {
+
+            throw error;
+
+        }
+
+    }
+
+
     console.log("CampusFlow cloud database connected.");
     return true;
 }
