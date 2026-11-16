@@ -43,6 +43,19 @@ import {
 from "./database.mjs";
 
 
+import {
+    registerCloudRoutes
+}
+from "./cloud-routes.mjs";
+
+
+import {
+    initializeCloudDatabase,
+    closeCloudDatabase
+}
+from "./cloud-database.mjs";
+
+
 
 /* ================================================= */
 /* FILE PATHS */
@@ -115,6 +128,19 @@ const database =
     getDatabase();
 
 
+await initializeCloudDatabase()
+    .catch(
+        error => {
+
+            console.error(
+                "CampusFlow cloud database startup failed:",
+                error
+            );
+
+        }
+    );
+
+
 
 /* ================================================= */
 /* EXPRESS SETTINGS */
@@ -184,6 +210,16 @@ app.use(
         next();
 
     }
+);
+
+
+
+/* ================================================= */
+/* CLOUD ACCOUNT + SYNC ROUTES */
+/* ================================================= */
+
+registerCloudRoutes(
+    app
 );
 
 
@@ -523,7 +559,15 @@ app.get(
 
                 "/api/health",
 
-                "/api/database"
+                "/api/database",
+
+                "/api/cloud/status",
+
+                "/api/auth/login",
+
+                "/api/auth/signup",
+
+                "/api/cloud/snapshot"
 
             ]
 
@@ -651,7 +695,23 @@ function shutdown(
 
 
     server.close(
-        () => {
+        async () => {
+
+            try {
+
+                await closeCloudDatabase();
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Cloud database shutdown error:",
+                    error
+                );
+
+            }
+
 
             try {
 
