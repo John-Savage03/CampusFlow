@@ -73,3 +73,19 @@ jobs:
 
           test "$RESET_STATUS" = "400"
           grep -q '"status":"error"' /tmp/reset.json
+
+          USERNAME="recovery_status_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          PASSWORD="RecoveryStatus-CI-2026!"
+
+          SIGNUP=$(
+            curl -fsS               -c /tmp/account-cookies.txt               -H "Content-Type: application/json"               -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"role\":\"student\",\"recoveryEmail\":\"$USERNAME@example.invalid\"}"               http://127.0.0.1:3000/api/auth/signup
+          )
+
+          echo "$SIGNUP" | grep -q '"status":"ok"'
+
+          RECOVERY_STATUS=$(
+            curl -fsS               -b /tmp/account-cookies.txt               http://127.0.0.1:3000/api/auth/recovery-email
+          )
+
+          echo "$RECOVERY_STATUS" | grep -q '"status":"ok"'
+          echo "$RECOVERY_STATUS" | grep -q '"recoveryEmail":'

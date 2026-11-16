@@ -273,6 +273,18 @@ async function loadStatus() {
                 "/api/auth/recovery-email"
             );
 
+        if (response.status === 401) {
+            sessionStorage.removeItem(
+                "campusFlowCurrentUser"
+            );
+
+            window.location.replace(
+                "login.html"
+            );
+
+            return;
+        }
+
         if (!response.ok) {
             throw new Error(
                 body.message ||
@@ -489,6 +501,18 @@ export function setupAccountSecurity() {
                                     })
                             }
                         );
+
+                    if (response.status === 401) {
+                        sessionStorage.removeItem(
+                            "campusFlowCurrentUser"
+                        );
+
+                        window.location.replace(
+                            "login.html"
+                        );
+
+                        return;
+                    }
 
                     if (!response.ok) {
                         throw new Error(
