@@ -1,117 +1,99 @@
-# CampusFlow Cloud Accounts Setup
+# CampusFlow Cloud Accounts
 
-The `feature/cloud-accounts` branch adds cross-device CampusFlow accounts.
+CampusFlow now uses a Supabase cloud backend for cross-device accounts and data.
 
-## What is cloud-backed
+## Cloud project
 
-- Usernames and password hashes
-- Login sessions
+- Supabase project: `CampusFlow`
+- Project ref: `gpjkrmokhypzjqzovmfo`
+- Region: `us-east-1`
+- Edge Function: `campusflow-api`
+- Private file bucket: `campusflow-materials`
+
+## What syncs across devices
+
+- Account login
 - Courses
 - Assignments and exams
 - Grades
 - Calendar/event data
-- Course Hub materials, notes, and course profiles
-- Project/local CampusFlow data stored under `campusflow-*`
+- Course Hub notes and materials
+- Projects and other CampusFlow browser data stored under `campusflow-*`
 - Bulk-uploaded course files
 
-The existing browser storage remains as a local cache. CampusFlow downloads the user's cloud snapshot before the normal app starts and uploads changes automatically.
+## How it works
 
-## 1. Create a Supabase project
+The Render Node server does not store a Supabase database password or secret key.
 
-Create a Supabase project at https://supabase.com.
+The browser talks to the existing CampusFlow `/api/...` routes. The Node server keeps the CampusFlow session token in an HttpOnly cookie and proxies cloud requests to the deployed Supabase Edge Function. Supabase keeps its privileged credentials inside the Edge Function environment.
 
-You do not need to manually create CampusFlow database tables. The server creates its cloud tables the first time it connects.
+This means there are no Supabase secrets to copy into GitHub or Render.
 
-You also do not need to manually create the file bucket. If the service-role credentials are configured, CampusFlow creates a private bucket named `campusflow-materials`.
+## Existing account migration
 
-## 2. Get the required Supabase values
+On the original browser that already contains a CampusFlow account:
 
-From the Supabase dashboard, collect:
+1. Open CampusFlow.
+2. Log in with the same username and password.
+3. If the username does not exist in the cloud yet, CampusFlow verifies the old local password and creates the matching cloud account.
+4. The existing browser data becomes the first cloud snapshot.
+5. Existing browser-only bulk files are moved into the private Supabase Storage bucket.
 
-- PostgreSQL connection string
-- Project URL
-- Secret key
+After that, another device can log in with the same username and password and load the same data.
 
-The secret key is server-only. Never place it in `index.html`, browser JavaScript, screenshots, or GitHub.
+## Local test
 
-## 3. Local setup
-
-Copy:
-
-```
-.env.example
-```
-
-to:
-
-```
-.env
-```
-
-Fill in the real values.
-
-Then run:
+Run:
 
 ```bash
-npm install
+npm ci
 npm start
 ```
 
-Open:
+Then open:
 
 ```
 http://localhost:3000
 ```
 
-Do not use Live Server for cloud-account testing. The Express server owns the login cookie and cloud API.
+Do not use VS Code Live Server for cloud-account testing because the Node server owns the secure session cookie and API proxy.
 
-## 4. Render setup
+## Render deployment
 
-In the Render Web Service environment settings add:
+No Supabase secret environment variables are required.
+
+Render only needs to deploy the CampusFlow GitHub repository and run:
 
 ```
-NODE_ENV=production
-DATABASE_URL=<Supabase PostgreSQL connection string>
-SUPABASE_URL=<Supabase project URL>
-SUPABASE_SECRET_KEY=<Supabase secret key>
-SUPABASE_STORAGE_BUCKET=campusflow-materials
+npm start
 ```
 
-Redeploy the service after saving them.
+The cloud API URL is built into the server with an optional `CAMPUSFLOW_CLOUD_API_URL` override for future migrations.
 
-## 5. Existing-account migration
+## Cross-device verification
 
-If an existing CampusFlow account only exists in browser storage:
-
-1. Log in with the same username and password on the original browser.
-2. CampusFlow verifies the old local password.
-3. The account is promoted to the cloud automatically.
-4. Existing CampusFlow local data is uploaded as the account's first cloud snapshot.
-5. Existing IndexedDB bulk-uploaded files are migrated to private cloud storage.
-
-After this succeeds, another device can use the same username and password.
-
-## 6. Test cross-device behavior
-
-On device/browser A:
+Device A:
 
 1. Log in.
 2. Add a course.
 3. Add an assignment.
 4. Add a grade or Course Hub note.
-5. Bulk upload a small test file.
+5. Upload a small file.
 6. Wait about one second after the last edit.
 
-On device/browser B:
+Device B:
 
-1. Open the deployed CampusFlow site.
-2. Log in with the same credentials.
-3. Confirm the same course, assignment, grade/note, and uploaded file appear.
+1. Open the same deployed CampusFlow website.
+2. Log in with the same username and password.
+3. Confirm the course, assignment, grade/note, and uploaded file appear.
 
-## Security notes
+## Security model
 
-- Passwords are hashed server-side with Node's scrypt.
-- Session tokens are random, hashed in the database, and sent in HttpOnly cookies.
-- Browser JavaScript never receives the database password or Supabase secret key.
-- Files are stored in a private bucket and opened with short-lived signed URLs.
-- Server endpoints always resolve the user from the login session rather than accepting a user ID from the browser.
+- User passwords are PBKDF2-hashed in the Supabase Edge Function.
+- Session tokens are random and only their SHA-256 hashes are stored in the database.
+- The raw session token stays in an HttpOnly, SameSite=Lax cookie on the CampusFlow site.
+- Cloud tables have RLS enabled and no browser policies.
+- The browser never receives a Supabase secret key.
+- Uploaded files are stored in a private bucket.
+- File opening/downloading uses short-lived signed URLs.
+- Every snapshot/file operation resolves the account from the server-side session token.
