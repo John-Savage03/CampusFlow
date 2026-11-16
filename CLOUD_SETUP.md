@@ -30,9 +30,9 @@ From the Supabase dashboard, collect:
 
 - PostgreSQL connection string
 - Project URL
-- Service-role key
+- Secret key
 
-The service-role key is server-only. Never place it in `index.html`, browser JavaScript, screenshots, or GitHub.
+The secret key is server-only. Never place it in `index.html`, browser JavaScript, screenshots, or GitHub.
 
 ## 3. Local setup
 
@@ -73,7 +73,7 @@ In the Render Web Service environment settings add:
 NODE_ENV=production
 DATABASE_URL=<Supabase PostgreSQL connection string>
 SUPABASE_URL=<Supabase project URL>
-SUPABASE_SERVICE_ROLE_KEY=<Supabase service-role key>
+SUPABASE_SECRET_KEY=<Supabase secret key>
 SUPABASE_STORAGE_BUCKET=campusflow-materials
 ```
 
@@ -112,6 +112,6 @@ On device/browser B:
 
 - Passwords are hashed server-side with Node's scrypt.
 - Session tokens are random, hashed in the database, and sent in HttpOnly cookies.
-- Browser JavaScript never receives the database password or Supabase service-role key.
+- Browser JavaScript never receives the database password or Supabase secret key.
 - Files are stored in a private bucket and opened with short-lived signed URLs.
 - Server endpoints always resolve the user from the login session rather than accepting a user ID from the browser.
