@@ -83,6 +83,10 @@ let renderCourseHub =
     () => {};
 
 
+let renderBulkMaterials =
+    () => {};
+
+
 
 /* ================================================= */
 /* SAFE FEATURE RUNNER */
@@ -152,6 +156,81 @@ export function refreshApplication() {
         "Course Hub render",
         renderCourseHub
     );
+
+
+    runSafely(
+        "Bulk materials render",
+        () => {
+
+            Promise
+                .resolve(
+                    renderBulkMaterials()
+                )
+                .catch(
+                    error => {
+
+                        console.error(
+                            "Bulk materials render failed:",
+                            error
+                        );
+
+                    }
+                );
+
+        }
+    );
+
+}
+
+
+
+/* ================================================= */
+/* LOAD COURSE HUB */
+/* ================================================= */
+
+async function loadBulkMaterialsFeature() {
+
+    try {
+
+        const module =
+            await import(
+                "./bulk-materials.js"
+            );
+
+
+        if (
+            typeof module.renderBulkMaterials ===
+            "function"
+        ) {
+
+            renderBulkMaterials =
+                module.renderBulkMaterials;
+
+        }
+
+
+        if (
+            typeof module.setupBulkMaterials ===
+            "function"
+        ) {
+
+            await module.setupBulkMaterials();
+
+        }
+
+
+        await renderBulkMaterials();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Bulk material upload could not load:",
+            error
+        );
+
+    }
 
 }
 
@@ -338,6 +417,14 @@ async function startCampusFlow() {
     */
 
     await loadCourseHubFeature();
+
+
+    /*
+        Load bulk file uploads after Course Hub
+        has created its page and controls.
+    */
+
+    await loadBulkMaterialsFeature();
 
 
     /*
