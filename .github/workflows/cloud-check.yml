@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/cloud-accounts
+      - feature/password-reset
   pull_request:
     branches:
       - main
@@ -35,3 +36,40 @@ jobs:
           node --check js/auth.js
           node --check js/auth-guard.js
           node --check js/bulk-materials.js
+          node --check js/account-security.js
+          node --check js/password-recovery.js
+
+      - name: Check password recovery proxy endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export PORT=3000
+          npm start > /tmp/campusflow.log 2>&1 &
+          SERVER_PID=$!
+
+          cleanup() {
+            kill "$SERVER_PID" 2>/dev/null || true
+          }
+
+          trap cleanup EXIT
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          FORGOT=$(
+            curl -fsS               -H "Content-Type: application/json"               -d '{"email":"nobody@example.invalid"}'               http://127.0.0.1:3000/api/auth/forgot-password
+          )
+
+          echo "$FORGOT" | grep -q '"status":"ok"'
+
+          RESET_STATUS=$(
+            curl -sS               -o /tmp/reset.json               -w "%{http_code}"               -H "Content-Type: application/json"               -d '{"token":"invalid-test-token","password":"NewPassword123!"}'               http://127.0.0.1:3000/api/auth/reset-password
+          )
+
+          test "$RESET_STATUS" = "400"
+          grep -q '"status":"error"' /tmp/reset.json

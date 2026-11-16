@@ -25,6 +25,12 @@ from "./ui.js";
 
 
 import {
+    setupAccountSecurity
+}
+from "./account-security.js";
+
+
+import {
     setupNavigation
 }
 from "./navigation.js";
@@ -400,6 +406,8 @@ async function startCampusFlow() {
             setupAuthenticatedInterface(
                 user
             );
+
+            setupAccountSecurity();
 
         }
     );
