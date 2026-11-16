@@ -648,6 +648,16 @@
                     "";
 
 
+                const recoveryEmail =
+                    document
+                        .getElementById(
+                            "RecoveryEmail"
+                        )
+                        ?.value
+                        .trim() ||
+                    "";
+
+
                 const password =
                     passwordInput
                         ?.value ||
@@ -676,6 +686,19 @@
 
                     return showMessage(
                         "Username must be between 3 and 40 characters."
+                    );
+
+                }
+
+
+                if (
+                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                        recoveryEmail
+                    )
+                ) {
+
+                    return showMessage(
+                        "Enter a valid recovery email."
                     );
 
                 }
@@ -755,7 +778,8 @@
                                         JSON.stringify({
                                             username,
                                             password,
-                                            role
+                                            role,
+                                            recoveryEmail
                                         })
                                 }
                             );
